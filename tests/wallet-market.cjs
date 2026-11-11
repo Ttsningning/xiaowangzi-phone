@@ -1,0 +1,23 @@
+const fs=require('fs'),{JSDOM,VirtualConsole}=require('jsdom'),{indexedDB}=require('fake-indexeddb');
+const root=require('path').resolve(__dirname,'..')+'/';let html=fs.readFileSync(root+'index.html','utf8').replace('<script src="world-market.js"></script>','<script>'+fs.readFileSync(root+'world-market.js','utf8').replace(/\$/g,'$$$$')+'</script>');
+const errors=[];const vc=new VirtualConsole();vc.on('jsdomError',e=>{if(!/Not implemented/.test(e.message))errors.push(e.message)});
+const dom=new JSDOM(html,{url:'https://example.org/',runScripts:'dangerously',pretendToBeVisual:true,virtualConsole:vc,beforeParse(w){w.structuredClone=structuredClone;w.indexedDB=indexedDB;w.matchMedia=()=>({matches:false,addEventListener(){}});w.HTMLElement.prototype.scrollTo=function(){};w.HTMLElement.prototype.scrollIntoView=function(){};w.fetch=()=>Promise.reject(new Error('No live API in tests'));}});
+const w=dom.window,ev=x=>w.eval(x),ok=(label,x)=>{if(!x)throw Error('FAILED '+label);console.log('PASS',label)};
+(async()=>{await new Promise(r=>setTimeout(r,1000));console.log('errors',errors);ok('boot',ev('!!S.wallet.migrated && S.home.pages.flat().some(x=>x.app==="wallet")'));
+ok('isolated DB',ev('DB.db.name==="xiaowangzi-phone"'));ev('openApp("wallet")');ok('wallet renders',w.document.querySelector('#walletBody').textContent.includes('固定收入'));ev('openApp("market")');ok('market renders',w.document.querySelector('#marketBody').textContent.includes('万界杂货铺'));
+ok('income expense ledger',ev('(()=>{const b=S.wallet.balance;wmMoney(100,"income");wmMoney(-50,"expense");return S.wallet.balance===b+50&&S.wallet.ledger[0].amount===-50})()'));
+ok('reject invalid/overdraw',ev('(()=>{let n=0;try{wmMoney(-1e12,"bad")}catch{n++}try{wmMoney(NaN,"bad")}catch{n++}return n===2})()'));
+ok('token extraction in chat',ev('(()=>{pushMsg(curT(),"online","assistant","[信物:旧纽扣:给你的纪念]",{who:curT().members[0]});return S.wallet.bag.at(-1).kind==="token"&&curT().msgs.at(-1).content.includes("已放入背包")})()'));
+ok('income catchup once',ev('(()=>{S.wallet.incomes=[{id:"i",name:"工资",amount:25,day:10,next:new Date(2026,8,10,12).getTime()}];const b=S.wallet.balance,t=new Date(2026,10,11,12).getTime();wmTick(t);const a=S.wallet.balance;wmTick(t);S.wallet.incomes=[];return a-b===75&&S.wallet.balance===a})()'));
+ok('preorder delivery once',ev('(()=>{S.market.orders.push({id:"p",name:"预售丹",desc:"丹药",qty:2,seller:"药师",status:"preorder",due:Date.now()-1});wmTick();wmTick();return S.wallet.bag.filter(x=>x.name==="预售丹").length===1&&S.wallet.bag.at(-1).qty===2})()'));
+ok('backup contains extension data',ev('(()=>{const b=buildBackup();return b.wallet.bag.length>0&&Array.isArray(b.market.orders)})()'));
+ok('TA wallet UI',ev('(()=>{peekTab="wallet";openApp("peek");return $("#peekBody").textContent.includes("看看 TA 的钱包")})()'));
+ok('currency formatter',ev('(()=>{S.wallet.currency="灵石";return money(52)==="52.00 灵石"})()'));
+// Test real transaction functions, mock only form interactions and API responses.
+ev('actionSheet=async()=>0;formSheet=async()=>({qty:"2"});');
+await ev('(async()=>{S.market.listings=[{id:"buy",name:"灵药",seller:"药师",desc:"治伤",stock:3,sold:0,price:10,need:"",preorder:false,type:"sale"}];await wmTrade("buy")})()');
+ok('buy quantity and exact debit',ev('S.market.listings[0].stock===1 && S.wallet.bag.at(-1).qty===2 && S.wallet.ledger[0].amount===-20'));
+ev('S.market.listings=[{id:"swap",name:"月之钥",seller:"收藏家",desc:"开门",stock:1,sold:0,price:100,need:"旧纽扣",needQty:1,preorder:false,type:"sale"}]');await ev('wmTrade("swap")');ok('barter consumes selected token',ev('S.wallet.bag.find(x=>x.name==="旧纽扣").qty===0 && S.wallet.bag.at(-1).name==="月之钥"'));
+ev('S.wallet.bag.push({id:"t",name:"定情戒指",qty:1,kind:"token"});S.market.listings=[{id:"want",name:"急购戒指",need:"定情戒指",needQty:1,stock:1,sold:0,type:"wanted",price:100}]');await ev('wmTrade("want")');ok('token cannot be converted to money',ev('S.wallet.bag.find(x=>x.id==="t").qty===1&&S.market.listings[0].stock===1'));
+const backup=ev('buildBackup()');await ev('applyBackup('+JSON.stringify({app:'moonsea-phone',v:2,wallet:{balance:9876},chars:backup.chars,threads:backup.threads})+')');ok('legacy balance migration',ev('S.wallet.balance===9876&&Array.isArray(S.wallet.ledger)&&Array.isArray(S.wallet.bag)'));
+ok('no runtime errors',errors.length===0);dom.window.close();})().catch(e=>{console.error(e);dom.window.close();process.exitCode=1});

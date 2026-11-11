@@ -1,0 +1,11 @@
+{
+  "name": "xiaowangzi-phone",
+  "private": true,
+  "scripts": {
+    "test": "node tests/wallet-market.cjs"
+  },
+  "devDependencies": {
+    "jsdom": "31.0.0",
+    "fake-indexeddb": "6.2.8"
+  }
+}
