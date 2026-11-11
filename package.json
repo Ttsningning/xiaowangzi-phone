@@ -2,7 +2,8 @@
   "name": "xiaowangzi-phone",
   "private": true,
   "scripts": {
-    "test": "node tests/wallet-market.cjs"
+    "build": "python3 scripts/build-site.py",
+    "test": "node tests/wallet-market.cjs && node tests/denglin-assets.cjs"
   },
   "devDependencies": {
     "jsdom": "31.0.0",
