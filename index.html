@@ -790,7 +790,7 @@ input,textarea,select{font:inherit;color:var(--text)}
         <div class="btns"><button class="btn" id="fetchModels">拉取模型列表</button><button class="btn pri" id="testApi">测试连接</button></div>
       </div>
       <div class="card glass">
-        <h3>生成</h3>
+        <h3>生成</h3><label class="chk"><input type="checkbox" data-s="stream">流式回复（边生成边显示）</label>
         <div class="field"><label>温度（越高越放飞）</label><input data-s="temperature" type="number" step="0.05" min="0" max="2"></div>
         <div class="field"><label>单次最大输出</label><input data-s="maxTokens" type="number"></div>
         <div class="field"><label>线下剧情篇幅（字）</label><input data-s="storyLength" type="number"></div>
@@ -814,9 +814,9 @@ input,textarea,select{font:inherit;color:var(--text)}
         <div class="field"><label>MiniMax 接口地址</label><input data-s="mmHost" placeholder="https://api.minimaxi.com"></div>
         <div class="field"><label>API Key</label><input data-s="mmKey" type="password"></div>
         <div class="field"><label>GroupId（账户管理 → 基本信息里能看到，有的 Key 不填也行）</label><input data-s="mmGroup"></div>
-        <div class="two"><div class="field"><label>模型</label><input data-s="mmModel" list="mmModelList"><datalist id="mmModelList"><option value="speech-02-hd"><option value="speech-02-turbo"><option value="speech-01-hd"><option value="speech-01-turbo"></datalist></div><div class="field"><label>语速</label><input data-s="mmSpeed" type="number" step="0.1" min="0.5" max="2"></div></div>
-        <div class="field"><label>默认音色 voice_id</label><input data-s="mmVoice" list="mmVoiceList"><datalist id="mmVoiceList"></datalist></div>
-        <div class="btns" style="margin-bottom:12px"><button class="btn" id="mmVoices">拉取音色</button></div>
+        <div class="two"><div class="field"><label>模型</label><input data-s="mmModel" list="mmModelList"><datalist id="mmModelList"><option value="speech-2.8-hd"><option value="speech-2.8-turbo"><option value="speech-2.6-hd"><option value="speech-2.6-turbo"><option value="speech-02-hd"><option value="speech-02-turbo"><option value="speech-01-hd"><option value="speech-01-turbo"></datalist></div><div class="field"><label>语速</label><input data-s="mmSpeed" type="number" step="0.1" min="0.5" max="2"></div></div>
+        <div class="field"><label>默认音色 voice_id</label><input data-s="mmVoice" placeholder="粘贴你生成或克隆的 voice_id" autocomplete="off" autocapitalize="none" spellcheck="false"><datalist id="mmVoiceList"></datalist></div>
+        <div class="btns" style="margin-bottom:12px"><button class="btn" id="mmModels">选择语音模型</button><button class="btn" id="mmVoices">拉取音色</button><button class="btn" id="mmCustomVoice">填写自定义音色 ID</button></div>
         </div>
         <div class="field" data-hide="ttsMode=system"><label>试听这句话</label><input id="ttsTestText" value="今天的星星好亮，我想把最亮的那颗摘给你。"></div>
         <div class="btns" style="margin-bottom:12px"><button class="btn pri" id="ttsTest">试听</button></div>
@@ -852,7 +852,7 @@ input,textarea,select{font:inherit;color:var(--text)}
         <div data-show="imgProv=nai">
         <div class="field"><label>接口地址（留空走 NovelAI 官方；用第三方就填中转给的地址）</label><input data-s="naiHost" placeholder="https://image.novelai.net"></div>
         <div class="field"><label>Token / 密钥（官方在 NovelAI 账户设置 → Get Persistent API Token）</label><input data-s="naiKey" type="password" placeholder="pst-..."></div>
-        <div class="two"><div class="field"><label>模型</label><select data-s="naiModel"><option value="nai-diffusion-4-5-full">V4.5 Full</option><option value="nai-diffusion-4-5-curated">V4.5 Curated</option><option value="nai-diffusion-4-full">V4 Full</option><option value="nai-diffusion-4-curated-preview">V4 Curated</option><option value="nai-diffusion-3">V3</option><option value="nai-diffusion-furry-3">Furry V3</option></select></div>
+        <div class="two"><div class="field"><label>模型</label><select data-s="naiModel"><option value="nai-diffusion-5-full">V5 Full</option><option value="nai-diffusion-5-curated">V5 Curated</option><option value="nai-diffusion-4-5-full">V4.5 Full</option><option value="nai-diffusion-4-5-curated">V4.5 Curated</option><option value="nai-diffusion-4-full">V4 Full</option><option value="nai-diffusion-4-curated-preview">V4 Curated</option><option value="nai-diffusion-3">V3</option><option value="nai-diffusion-furry-3">Furry V3</option></select></div>
           <div class="field"><label>尺寸</label><select data-s="naiSize"><option value="832x1216">竖图 832×1216</option><option value="1216x832">横图 1216×832</option><option value="1024x1024">方图 1024×1024</option><option value="512x768">小竖图 512×768</option></select></div></div>
         <div class="two"><div class="field"><label>采样器</label><select data-s="naiSampler"><option value="k_euler_ancestral">Euler Ancestral</option><option value="k_euler">Euler</option><option value="k_dpmpp_2s_ancestral">DPM++ 2S Ancestral</option><option value="k_dpmpp_2m_sde">DPM++ 2M SDE</option><option value="k_dpmpp_2m">DPM++ 2M</option><option value="k_dpmpp_sde">DPM++ SDE</option></select></div>
           <div class="field"><label>步数 / 引导</label><div class="two"><input data-s="naiSteps" type="number" min="1" max="50"><input data-s="naiScale" type="number" step="0.5" min="0" max="10"></div></div></div>
@@ -931,7 +931,7 @@ const DB={db:null,
   get(k){return new Promise((res,rej)=>{const q=this.db.transaction('kv').objectStore('kv').get(k);q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error)})},
   set(k,v){return new Promise((res,rej)=>{const t=this.db.transaction('kv','readwrite');t.objectStore('kv').put(v,k);t.oncomplete=res;t.onerror=()=>rej(t.error)})}};
 const DEFAULTS={
-  settings:{baseUrl:'',apiKey:'',model:'',temperature:0.9,maxTokens:1200,contextSize:40,summaryEvery:50,storyLength:400,replyDelay:2,showLock:true,timeAware:true,diaryCaught:true,ttsMode:'system',ttsBase:'',ttsKey:'',ttsModel:'tts-1',ttsVoice:'alloy',visBase:'',visKey:'',visModel:'',imgBase:'',imgKey:'',imgModel:'',imgSize:'1024x1024',imgStyle:'精致的日系动漫插画风格，柔和光线',storyAutoImg:false,imgProv:'openai',naiHost:'',naiKey:'',naiModel:'nai-diffusion-4-5-full',naiSize:'832x1216',naiSampler:'k_euler_ancestral',naiSteps:28,naiScale:5,naiPos:'',naiNeg:'lowres, bad anatomy, bad hands, text, error, missing fingers, worst quality, low quality, blurry, watermark',mmHost:'https://api.minimaxi.com',mmKey:'',mmGroup:'',mmModel:'speech-02-hd',mmVoice:'female-shaonv',mmSpeed:1,ghRepo:'',ghToken:'',ghAuto:true,ghLast:0,proactive:true,proMin:2,proMax:6,quietStart:1,quietEnd:8},
+  settings:{baseUrl:'',apiKey:'',model:'',stream:false,temperature:0.9,maxTokens:1200,contextSize:40,summaryEvery:50,storyLength:400,replyDelay:2,showLock:true,timeAware:true,diaryCaught:true,ttsMode:'system',ttsBase:'',ttsKey:'',ttsModel:'tts-1',ttsVoice:'alloy',visBase:'',visKey:'',visModel:'',imgBase:'',imgKey:'',imgModel:'',imgSize:'1024x1024',imgStyle:'精致的日系动漫插画风格，柔和光线',storyAutoImg:false,imgProv:'openai',naiHost:'',naiKey:'',naiModel:'nai-diffusion-4-5-full',naiSize:'832x1216',naiSampler:'k_euler_ancestral',naiSteps:28,naiScale:5,naiPos:'',naiNeg:'lowres, bad anatomy, bad hands, text, error, missing fingers, worst quality, low quality, blurry, watermark',mmHost:'https://api.minimaxi.com',mmKey:'',mmGroup:'',mmModel:'speech-02-hd',mmVoice:'female-shaonv',mmSpeed:1,ghRepo:'',ghToken:'',ghAuto:true,ghLast:0,proactive:true,proMin:2,proMax:6,quietStart:1,quietEnd:8},
   user:{name:'宁宁',persona:'',avatar:''},
   stickers:[],moments:[],diaries:{},wallet:{balance:5200},orders:[],peek:{},
   theme:{pack:'prince',wallpaper:'',lockWallpaper:'',chatBg:'',icons:{}},
@@ -1754,6 +1754,44 @@ function anthStat(c,u){if(!c||!u)return;c.apiStat={r:u.cache_read_input_tokens||
   if($('#app-char').classList.contains('open')&&charEdit===c.id)showStat(c)}
 function showStat(c){const el=$('#caStat');if(!el)return;const t=c?.apiStat;el.textContent=t?`上次（${fmtTime(t.ts)}）：缓存读取 ${t.r} · 写入缓存 ${t.w} · 未缓存 ${t.n} · 输出 ${t.o} tokens`:'还没有用专属 API 说过话'}
 /* Anthropic 官方 + 提示缓存：人设一个断点，记忆一个断点，聊天记录末尾一个断点，时间和世界书放在断点后面 */
+const useAIStream=opt=>!!(opt.stream??(S.settings.stream&&typeof opt.onDelta==='function'));
+async function readAIResponse(r,opt={},anth=false){
+  if(!useAIStream(opt)||/application\/json/i.test(r.headers.get('content-type')||'')){
+    const j=await r.json();if(j.error)throw Error(j.error.message||'接口返回错误');
+    if(anth)anthStat(opt.char,j.usage);
+    const text=anth?(j.content||[]).filter(x=>x.type==='text').map(x=>x.text).join(''):j.choices?.[0]?.message?.content;
+    if(!text)throw Error('接口没有返回内容');opt.onDelta?.(text);return text;
+  }
+  if(!r.body?.getReader)throw Error('当前浏览器不支持流式读取，请关闭流式开关');
+  const reader=r.body.getReader(),decoder=new TextDecoder();let buffer='',text='',ended=false,usage={};
+  const event=block=>{
+    const data=block.split(/\r?\n/).filter(l=>l.startsWith('data:')).map(l=>l.slice(5).trimStart()).join('\n');
+    if(!data)return;if(data==='[DONE]'){ended=true;return}
+    const j=JSON.parse(data);if(j.error||j.type==='error')throw Error(j.error?.message||'流式接口返回错误');
+    let delta='';
+    if(anth){
+      if(j.type==='message_start')usage={...usage,...j.message?.usage};
+      if(j.type==='message_delta')usage={...usage,...j.usage};
+      if(j.type==='content_block_start'&&j.content_block?.type==='text')delta=j.content_block.text||'';
+      if(j.type==='content_block_delta'&&j.delta?.type==='text_delta')delta=j.delta.text||'';
+      if(j.type==='message_stop')ended=true;
+    }else{
+      const choice=j.choices?.find(c=>c.index===0)||j.choices?.[0];
+      delta=choice?.delta?.content||'';
+      if(choice?.finish_reason)ended=true;
+    }
+    if(typeof delta==='string'&&delta){text+=delta;opt.onDelta?.(text)}
+  };
+  try{
+    while(true){
+      const {done,value}=await reader.read();buffer+=done?decoder.decode():decoder.decode(value,{stream:true});
+      let match;while((match=/\r?\n\r?\n/.exec(buffer))){event(buffer.slice(0,match.index));buffer=buffer.slice(match.index+match[0].length)}
+      if(done){if(buffer.trim())event(buffer);break}
+    }
+    if(!ended)throw Error('流式连接中断，回复未保存，请重试');
+    if(!text)throw Error('接口没有返回内容');if(anth)anthStat(opt.char,usage);return text;
+  }finally{try{await reader.cancel()}catch(_){}reader.releaseLock()}
+}
 async function anthCached(own,opt,K,temperature,max_tokens){
   const ttl=own.cache||'off',cc=ttl==='off'?null:ttl==='1h'?{type:'ephemeral',ttl:'1h'}:{type:'ephemeral'};
   const blk=(text,mark)=>mark&&cc?{type:'text',text,cache_control:cc}:{type:'text',text};
@@ -1764,9 +1802,9 @@ async function anthCached(own,opt,K,temperature,max_tokens){
   const extra=[...K.tail];if(K.D)extra.push(K.D);
   if(ms.at(-1).role==='user'){for(const t of extra)ms.at(-1).content.push(blk(t))}
   else ms.push({role:'user',content:(extra.length?extra:['继续']).map(t=>blk(t))});
-  const r=await fetch(own.base.replace(/\/+$/,'').replace(/\/v1$/,'')+'/v1/messages',{method:'POST',headers:anthHead(own.key),body:JSON.stringify({model:own.model,system,messages:ms,temperature:Math.min(1,temperature),max_tokens})});
+  const r=await fetch(own.base.replace(/\/+$/,'').replace(/\/v1$/,'')+'/v1/messages',{method:'POST',headers:anthHead(own.key),body:JSON.stringify({model:own.model,system,messages:ms,temperature:Math.min(1,temperature),max_tokens,stream:useAIStream(opt)})});
   if(!r.ok){const t=await r.text().catch(()=>'');throw new Error(`${opt.char.name} 的接口报错 ${r.status}：${t.slice(0,180)}`)}
-  const j=await r.json();anthStat(opt.char,j.usage);const c=(j.content||[]).filter(x=>x.type==='text').map(x=>x.text).join('');if(!c)throw new Error('接口没有返回内容');return c;
+  return readAIResponse(r,opt,true);
 }
 async function callAPI(messages,opt={}){
   const s=S.settings,own=ownAPI(opt.char);
@@ -1777,16 +1815,16 @@ async function callAPI(messages,opt={}){
     for(const m of messages){if(m.role==='system'||!m.content)continue;const role=m.role==='assistant'?'assistant':'user';const L=ms[ms.length-1];if(L&&L.role===role)L.content+='\n'+m.content;else ms.push({role,content:m.content})}
     if(!ms.length||ms[0].role!=='user')ms.unshift({role:'user',content:'（开始）'});
     if(ms[ms.length-1].role!=='user')ms.push({role:'user',content:'（继续）'});
-    const r=await fetch(own.base.replace(/\/+$/,'').replace(/\/v1$/,'')+'/v1/messages',{method:'POST',headers:anthHead(own.key),body:JSON.stringify({model:own.model,system:sys||undefined,messages:ms,temperature:Math.min(1,temperature),max_tokens})});
+    const r=await fetch(own.base.replace(/\/+$/,'').replace(/\/v1$/,'')+'/v1/messages',{method:'POST',headers:anthHead(own.key),body:JSON.stringify({model:own.model,system:sys||undefined,messages:ms,temperature:Math.min(1,temperature),max_tokens,stream:useAIStream(opt)})});
     if(!r.ok){const t=await r.text().catch(()=>'');throw new Error(`${opt.char.name} 的接口报错 ${r.status}：${t.slice(0,180)}`)}
-    const j=await r.json();anthStat(opt.char,j.usage);const c=(j.content||[]).filter(x=>x.type==='text').map(x=>x.text).join('');if(!c)throw new Error('接口没有返回内容');return c;
+    return readAIResponse(r,opt,true);
   }
   const base=own?own.base:s.baseUrl,key=own?own.key:s.apiKey,model=own?own.model:s.model;
   if(!base||!key||!model)throw new Error('先去「设置」填好 API 地址、密钥和模型～');
   const r=await fetch(base.replace(/\/+$/,'')+'/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
-    body:JSON.stringify({model,messages,temperature,max_tokens})});
+    body:JSON.stringify({model,messages,temperature,max_tokens,stream:useAIStream(opt)})});
   if(!r.ok){const t=await r.text().catch(()=>'');throw new Error(`${own?opt.char.name+' 的':''}接口报错 ${r.status}：${t.slice(0,180)}`)}
-  const j=await r.json();const c=j.choices?.[0]?.message?.content;if(!c)throw new Error('接口没有返回内容');return c;
+  return readAIResponse(r,opt);
 }
 const parseJSON=t=>{const m=clean(t).replace(/```(json)?/g,'').match(/[\[{][\s\S]*[\]}]/);return JSON.parse(m[0])};
 function pendingGift(T){for(let i=T.msgs.length-1;i>=0;i--){const m=T.msgs[i];if(m.role==='user'&&(m.type==='redpacket'||m.type==='transfer')&&m.data?.status==='pending')return m}return null}
@@ -1819,7 +1857,18 @@ async function generate(T,mode,extra,o={}){
   busy=true;if(!o.ts)setTyping(T,mode,true);
   try{
     const now=o.ts||Date.now(),P=activePreset();
-    const out=clean(await callAPI(buildPrompt(T,mode,extra,now),{temperature:P.temperature??undefined,char:isGroup(T)?null:charById(T.members[0])}));
+    const previewId='stream-'+uid();
+    const onDelta=!o.ts&&S.settings.stream?text=>{
+      const host=mode==='online'?(chatOpen(T)?$('#chatList'):null):(curT()===T?$('#storyList'):null);
+      if(!host)return;
+      let el=document.getElementById(previewId);
+      if(!el){el=document.createElement('div');el.id=previewId;el.className='card glass stream-preview';el.style.whiteSpace='pre-wrap';el.style.overflowWrap='anywhere';host.appendChild(el)}
+      el.textContent=clean(text.replace(/<think>[\s\S]*?(?:<\/think>|$)/g,'').replace(/<[^>]*$/,''));host.scrollTop=host.scrollHeight;
+    }:undefined;
+    let raw;
+    try{raw=await callAPI(buildPrompt(T,mode,extra,now),{temperature:P.temperature??undefined,char:isGroup(T)?null:charById(T.members[0]),onDelta})}
+    finally{document.getElementById(previewId)?.remove()}
+    const out=clean(raw);
     const pro=o.pro?uid():undefined;
     if(mode==='online'){
       const lines=out.split(/\n+/).map(s=>s.trim()).filter(Boolean).slice(0,isGroup(T)?10:8);let lastWho,shown=[],k=0;
@@ -1827,7 +1876,7 @@ async function generate(T,mode,extra,o={}){
         const p=parseLine(T,l,lastWho);if(!p)continue;lastWho=p.who;
         const ts=o.ts?o.ts+k*20e3:0;k++;
         if(p.act){giftAct(T,p.act,p.who,ts||undefined);if(chatOpen(T))renderChat();continue}
-        if(!o.ts){setTyping(T,mode,true,p.who);await sleep(350+Math.min((p.content||'').length*55,1400))}
+        if(!o.ts&&!onDelta){setTyping(T,mode,true,p.who);await sleep(350+Math.min((p.content||'').length*55,1400))}
         const m=pushMsg(T,'online','assistant',p.content,{ts:ts||undefined,pro,who:p.who,type:p.type,data:p.data});shown.push(m);if(m.type==='image')fillPhoto(T,m);
         if(chatOpen(T))renderChat();
       }
@@ -2245,7 +2294,7 @@ async function naiImage(desc,c,raw){
   const s=S.settings;if(!s.naiKey)throw new Error('还没填 NovelAI 的 Token');
   const host=(s.naiHost||'https://image.novelai.net').replace(/\/+$/,''),url=/\/ai\/generate-image$/.test(host)?host:host+'/ai/generate-image';
   const tags=raw?desc:await toTags(desc,c),prompt=[tags,s.naiPos].filter(Boolean).join(', '),neg=s.naiNeg||'';
-  const [w,h]=(s.naiSize||'832x1216').split('x').map(Number),v4=/diffusion-4/.test(s.naiModel),seed=Math.floor(Math.random()*4294967295);
+  const [w,h]=(s.naiSize||'832x1216').split('x').map(Number),v4=/diffusion-[45]/.test(s.naiModel),seed=Math.floor(Math.random()*4294967295);
   const P={width:w,height:h,scale:+s.naiScale||5,sampler:s.naiSampler||'k_euler_ancestral',steps:+s.naiSteps||28,n_samples:1,ucPreset:0,qualityToggle:true,seed,negative_prompt:neg,noise_schedule:v4?'karras':'native'};
   if(v4)Object.assign(P,{params_version:3,cfg_rescale:0,dynamic_thresholding:false,legacy:false,legacy_v3_extend:false,add_original_image:true,prefer_brownian:true,deliberate_euler_ancestral_bug:false,characterPrompts:[],use_coords:false,
     v4_prompt:{caption:{base_caption:prompt,char_captions:[]},use_coords:false,use_order:true},v4_negative_prompt:{caption:{base_caption:neg,char_captions:[]},legacy_uc:false}});
@@ -2292,6 +2341,12 @@ function pickList(title,items,onPick){
 $$('[data-fm]').forEach(b=>b.onclick=async()=>{const [base,key,list,field]=FM[b.dataset.fm]();toast('拉取中…',6000);
   try{const ids=await fetchModelIds(base,key);$('#'+list).innerHTML=ids.map(i=>`<option value="${esc(i)}">`).join('');toast(`拉到 ${ids.length} 个模型`);
     if(ids.length)pickList('选一个模型',ids.map(i=>[i,'']),v=>{S.settings[field]=v;save('settings');renderSettings();toast('已选 '+v)})}catch(e){toast(e.message,4000)}});
+$('#mmModels').onclick=()=>pickList('MiniMax 语音模型',[['speech-2.8-hd','2.8 高清'],['speech-2.8-turbo','2.8 快速'],['speech-2.6-hd','2.6 高清'],['speech-2.6-turbo','2.6 快速'],['speech-02-hd','02 高清'],['speech-02-turbo','02 快速']],v=>{S.settings.mmModel=v;save('settings');renderSettings();toast('已选 '+v)});
+$('[data-s=mmVoice]').addEventListener('input',e=>{S.settings.mmVoice=e.target.value.trim();save('settings')});
+$('#mmCustomVoice').onclick=async()=>{
+  const r=await formSheet('自定义 MiniMax 音色',[{k:'voice',t:'text',l:'你生成或克隆的 voice_id'}],{voice:S.settings.mmVoice});
+  if(!r?.voice?.trim())return;S.settings.mmVoice=r.voice.trim();save('settings');renderSettings();toast('自定义音色已保存');
+};
 $('#mmVoices').onclick=async()=>{if(!S.settings.mmKey)return toast('先填 MiniMax 的 API Key');toast('拉取中…',6000);
   let L=await mmVoiceList();const got=L.length;if(!got)L=MM_VOICES;else{const have=new Set(L.map(v=>v[0]));for(const v of MM_VOICES)if(!have.has(v[0]))L.push(v)}
   $('#mmVoiceList').innerHTML=L.map(([v])=>`<option value="${esc(v)}">`).join('');toast(got?`拉到 ${got} 个音色`:'没拉到音色列表，先给你常用的几个');

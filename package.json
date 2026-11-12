@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "build": "python3 scripts/build-site.py",
-    "test": "node tests/wallet-market.cjs && node tests/denglin-assets.cjs"
+    "test": "node tests/wallet-market.cjs && node tests/denglin-assets.cjs && node tests/api-settings.cjs"
   },
   "devDependencies": {
     "jsdom": "31.0.0",
