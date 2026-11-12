@@ -1,4 +1,12 @@
 /* 直接显示素材轮廓，不再套第二层圆角底板。 */
+.wms-seller,.wms-origin{margin-top:12px}.wms-comments{margin-top:18px;padding-top:12px;border-top:1px solid var(--line)}
+.wms-comments summary,.wms-profile summary{cursor:pointer;font-size:14px;line-height:1.8;color:var(--text)}
+.wms-comment{padding:14px 0;border-bottom:1px solid var(--line)}.wms-comment b{font-size:13px;display:block}.wms-comment p{margin:7px 0}
+.wms-comments .btn,.wms-seller .btn,.wms-origin .btn{font-size:12px;padding:8px 10px}
+.wms-comments textarea{display:block;width:100%;min-height:86px;resize:vertical;border:1px solid var(--line);border-radius:14px;padding:12px;margin-top:14px;background:var(--glass);color:var(--text);font:inherit;font-size:16px;box-sizing:border-box}
+.wms-comments .btns{flex-wrap:wrap;margin-top:10px}.wms-offer{padding:12px;margin:12px 0;border:1px solid var(--line);border-radius:14px;background:var(--glass)}
+.wms-profile{margin:14px 0;padding:12px;border:1px solid var(--line);border-radius:14px}.wms-profile p{font-size:13px!important}
+#marketBody>.btns{flex-wrap:nowrap;overflow-x:auto;justify-content:flex-start!important}#marketBody>.btns .btn{flex-shrink:0;font-size:12px;padding:9px 11px;white-space:nowrap}
 .ico.pk,.ico:has(img){background:none!important;border:0!important;box-shadow:none!important;border-radius:0!important;overflow:visible!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
 .ico.pk img,.ico:has(img) img{width:100%;height:100%;object-fit:contain;border-radius:0!important}
 .wm-hero{padding:24px 12px 20px;text-align:center;background:radial-gradient(ellipse at 50% 0%,rgba(255,218,164,.2),transparent 75%);border-radius:24px;margin-bottom:14px}

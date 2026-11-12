@@ -1,0 +1,56 @@
+const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
+const {JSDOM,VirtualConsole}=require('jsdom'),{indexedDB}=require('fake-indexeddb');
+const root=path.resolve(__dirname,'..');
+const html=fs.readFileSync(path.join(root,'index.html'),'utf8').replace('<script src="world-market.js"></script>',()=>'<script>'+fs.readFileSync(path.join(root,'world-market.js'),'utf8')+'</script>');
+const errors=[],vc=new VirtualConsole();vc.on('jsdomError',e=>{if(!/Not implemented/.test(e.message))errors.push(e.message)});
+const dom=new JSDOM(html,{url:'https://example.test/',runScripts:'dangerously',virtualConsole:vc,pretendToBeVisual:true,beforeParse(w){w.structuredClone=structuredClone;w.indexedDB=indexedDB;w.matchMedia=()=>({matches:false});w.HTMLElement.prototype.scrollTo=function(){};w.HTMLElement.prototype.scrollIntoView=function(){};w.fetch=async()=>{throw Error('No paid APIs in tests')};}});
+const w=dom.window,ev=x=>w.eval(x),check=(label,source)=>{assert.ok(ev(source),label);console.log('PASS',label)};
+const profile={name:'艾尔文',description:'成年精灵剑圣，王庭守卫，留影中持剑的人。',personality:'沉稳克制，有一点傲气。',scenario:'因宁宁购得留影水晶而取得联系。',first_mes:'那枚留影水晶，现在在你手里？',look:'成年银发精灵男性'};
+(async()=>{
+ await new Promise(r=>setTimeout(r,1000));
+ check('social migration boots','!!S.market.social.settings.enabled && S.market.social.requests.length===0');
+ ev(`S.market.lastTick=Date.now();S.market.listings=[{id:'portrait',name:'精灵剑圣独家留影',desc:'成年精灵剑圣在练剑后的留影水晶。',seller:'伊莉雅',world:'精灵大陆',type:'sale',mood:'溢价',currency:'元',rate:1,originPrice:100,base:100,markup:1,price:100,floor:45,stock:3,sold:0,need:'',preorder:false,lastPriceAt:Date.now()}];actionSheet=async()=>0;formSheet=async()=>({qty:'1'});`);
+ const before=ev('S.chars.length');await ev('wmTrade("portrait")');
+ assert.equal(ev('S.chars.length'),before);
+ check('purchase schedules encounter without adding friend','S.market.social.encounters.length===1&&S.market.social.encounters[0].due>Date.now()');
+ ev('wmSocialTick(S.market.social.encounters[0].due+1);wmSocialTick(S.market.social.encounters[0].due+2)');
+ check('elapsed time delivers one request only','wmRequestsCount()===1&&S.market.social.requests.length===1');
+ ev('msgTab="contacts";renderMsgs()');assert.ok(w.document.querySelector('#msgsBody').textContent.includes('陌生来信'));
+ ev('callAPI=async()=>'+JSON.stringify(JSON.stringify(profile)));
+ await ev('Promise.all([wmAcceptRequest(S.market.social.requests[0].id),wmAcceptRequest(S.market.social.requests[0].id)])');
+ assert.equal(ev('S.chars.length'),before+1);
+ check('accept creates consistent character and one greeting','(()=>{const r=S.market.social.requests[0],c=S.chars.find(c=>c.id===r.charId),T=threadOf(c.id);return r.status==="accepted"&&c.name==="艾尔文"&&T.msgs.length===1&&c.scenario.includes("留影")})()');
+ await ev('wmTrade("portrait")');ev('wmSocialTick(S.market.social.encounters[1].due+1)');
+ check('repeat purchase reuses same person','S.market.social.requests.length===1&&Object.values(S.market.social.people).filter(p=>p.role==="subject").length===1');
+ ev(`const manualOrder={id:'manual-order',name:'另一封书信',seller:'信使',status:'delivered'};S.market.orders.push(manualOrder);wmSocialPurchase({id:'letter',name:'另一封书信',seller:'信使',world:'星港',desc:'成年邮差留下的信件'},manualOrder);S.market.social.settings.enabled=false;wmSocialTick(Date.now()+10*86400000);`);
+ check('disabled automatic encounters stay quiet','S.market.social.requests.length===1');
+ ev('wmTab="orders";wmRenderMarket();document.querySelector("[data-wms=encounter][data-id=\\\""+S.market.social.encounters[2].id+"\\\"]").click()');
+ check('manual encounter is available with auto disabled','wmRequestsCount()===1&&S.market.social.requests.length===2');
+ ev('callAPI=async()=>{throw Error("profile offline")}');
+ await assert.rejects(ev('wmAcceptRequest(S.market.social.requests.find(r=>r.status==="pending").id)'),/profile offline/);
+ check('failed profile generation keeps request pending','wmRequestsCount()===1');
+ ev('S.market.social.requests.find(r=>r.status==="pending").status="rejected"');
+ check('declining does not add a character',`S.chars.length===${before+1}`);
+ // Use the real product message area, then provide deterministic NPC output.
+ const conversation={comments:[{name:'伊莉雅',role:'seller',text:'八十元，只给你这个价。'},{name:'星港旅人',role:'bystander',text:'这位剑圣的留影可不常见。'}],offer:{price:80,reason:'看你诚心想要'}};
+ ev('wmTab="listings";wmRenderMarket();callAPI=async()=>'+JSON.stringify(JSON.stringify(conversation)));
+ ev('document.querySelector("[data-wms-input=portrait]").value="80元能出吗？"');
+ await ev('wmSocialTalk("portrait",true)');
+ check('comments keep user seller and bystander identities','(()=>{const t=wmCommentThread("portrait");return t.comments.length===3&&t.comments[0].user&&S.market.social.people[t.comments[1].personId].name==="伊莉雅"&&t.offer.price===80})()');
+ const balance=ev('S.wallet.balance');ev('document.querySelector("[data-wms=offer][data-id=portrait]").click()');
+ assert.equal(ev('S.wallet.balance'),balance);check('adopting a deal never spends money','wmDealPrice(S.market.listings[0])===80');
+ await ev('wmTrade("portrait")');assert.equal(ev('S.wallet.balance'),balance-80);
+ check('purchase uses deal once and validates stock','S.market.listings[0].stock===0&&!S.market.listings[0].deal');
+ // Network failure must preserve the user's submitted words.
+ ev('wmRenderMarket();document.querySelector("[data-wms-input=portrait]").value="可以问问他的名字吗？";callAPI=async()=>{throw Error("offline")}');
+ await assert.rejects(ev('wmSocialTalk("portrait",true)'),/offline/);
+ check('failed AI reply does not erase user comment','wmCommentThread("portrait").comments.at(-1).text==="可以问问他的名字吗？"');
+ // Invalid model offers cannot undercut the floor or produce money.
+ const invalid={comments:[{role:'seller',text:'我想想。'}],offer:{price:-500,reason:'invalid'}};
+ ev('wmCommentThread("portrait").offer=null;wmRenderMarket();document.querySelector("[data-wms-input=portrait]").value="再便宜一点？";callAPI=async()=>'+JSON.stringify(JSON.stringify(invalid)));
+ await ev('wmSocialTalk("portrait",true)');check('invalid offer rejected','wmCommentThread("portrait").offer===null');
+ check('backup contains people comments encounters and request history','(()=>{const b=buildBackup();return b.market.social.requests.length===2&&b.market.social.encounters.length===4&&b.market.social.threads.portrait.comments.length>0&&b.chars.some(c=>c.marketPersonId)})()');
+ const backup=ev('buildBackup()');await ev('applyBackup('+JSON.stringify(backup)+')');
+ check('restore does not duplicate encounters','S.market.social.encounters.length===4&&S.market.social.requests.length===2');
+ assert.deepEqual(errors,[]);console.log('PASS no runtime errors');
+})().catch(e=>{console.error(e);process.exitCode=1}).finally(()=>dom.window.close());

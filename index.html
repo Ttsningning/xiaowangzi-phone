@@ -1935,6 +1935,7 @@ function renderMsgs(){
       <div class="sect">角色 · ${S.chars.length}</div>${S.chars.map(c=>`<button class="ct" data-ch="${c.id}">${charAv(c)}<span class="tt"><b>${esc(c.name)}</b><small>${esc((c.description||'').slice(0,28)||'还没写设定')}</small></span></button>`).join('')}
       <div class="sect">群聊 · ${gs.length}</div>${gs.map(T=>`<button class="ct" data-th="${T.id}">${threadAv(T)}<span class="tt"><b>${esc(tName(T))}</b><small>${tChars(T).map(c=>c.name).join('、')}</small></span></button>`).join('')||'<div class="evt" style="margin:8px">还没有群聊，点右上角「＋」发起</div>'}`;
   }else renderMoments();
+  if(msgTab!=='moments'&&typeof wmRequestsCount==='function'&&wmRequestsCount())body.insertAdjacentHTML('afterbegin',`<button class="th" data-wms="requests"><span class="tt"><b>✉ 集市的陌生来信</b><small>${wmRequestsCount()} 位旅人想认识你 · 接受后才加入联系人</small></span><span class="tag">查看</span></button>`);
 }
 $('#msgTabs').onclick=e=>{const b=e.target.closest('[data-tab]');if(b){msgTab=b.dataset.tab;renderMsgs();$('#msgsBody').scrollTop=0;if(msgTab==='moments')autoPosts(false)}};
 $('#msgsBody').addEventListener('click',async e=>{
