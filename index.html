@@ -640,6 +640,11 @@ input,textarea,select{font:inherit;color:var(--text)}
 .pk-prince .gift2 small{text-shadow:0 1px 2px rgba(255,255,255,.8)}
 .pk-prince .pdiv{display:block;height:22px;margin:16px auto;background:url(themes/prince/deco/div-moon.webp) center/contain no-repeat;opacity:.9}
 .pk-prince .empty{color:var(--muted)}
+
+.reply-draft{flex:none;display:flex;gap:10px;align-items:center;padding:9px 14px;border-top:1px solid var(--line);background:var(--inbg);font-size:12px}.reply-draft[hidden]{display:none}.reply-draft span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.reply-draft button{flex:none;color:var(--muted);font:inherit;background:none;border:0;padding:8px}
+.msg-quote{display:block;max-width:100%;min-width:0;text-align:left;overflow-wrap:anywhere;border:1px solid var(--line);border-left:3px solid var(--accent);background:var(--glass);color:var(--text);border-radius:10px;padding:8px 10px;margin-bottom:6px;font:inherit;font-size:12px;cursor:pointer}.msg-quote b{display:block;margin-bottom:4px}.msg-quote span{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;white-space:pre-wrap;line-height:1.5}.quote-flash{animation:quoteFlash 1.4s ease-out}@keyframes quoteFlash{from{filter:drop-shadow(0 0 10px var(--accent))}to{filter:none}}
+.photo-block{max-width:100%;min-width:0}.photo-block .pic{max-width:100%}.photo-block .photo-redraw{display:block;margin:6px 0 2px;padding:7px 10px;font-size:12px}.photo-redraw:disabled{opacity:.65}.photo-block .photo-status{display:block;color:var(--muted);font-size:11px;margin-top:6px}.para .photo-block{width:100%}
+
 </style>
 </head>
 <body>
@@ -663,6 +668,7 @@ input,textarea,select{font:inherit;color:var(--text)}
   <section class="app" id="app-chat">
     <header><button class="hbtn" data-back>‹ 返回</button><div class="title"><span id="chatName">TA</span><span class="sub" id="chatSub">在线</span></div><button class="hbtn" id="chatMore">⋯</button></header>
     <div class="body" id="chatList"></div>
+    <div id="replyDraft" class="reply-draft" hidden></div>
     <div class="inputbar"><button class="plusb" id="chatPlus" aria-label="更多">＋</button><textarea id="chatInput" rows="1" placeholder="发消息…"></textarea><button class="send alt" id="chatSend">✦</button></div>
     <div id="plusPanel"></div>
   </section>
@@ -1678,7 +1684,7 @@ function pushMsg(T,mode,role,content,o={}){
     const c=tName(T),u=S.user.name;
     T.msgs.push({id:uid(),mode,role:'event',ts,content:mode==='offline'?`${u}和${c}见面了（从手机联系转到现实相处）`:`${u}和${c}分开了，回到手机上联系`});
   }
-  const m={id:uid(),mode,role,content,ts};for(const k of ['pro','who','type','data'])if(o[k]!==undefined)m[k]=o[k];
+  const m={id:uid(),mode,role,content,ts};for(const k of ['pro','who','type','data','replyTo'])if(o[k]!==undefined)m[k]=o[k];
   T.msgs.push(m);saveMsgs(T);
   if(role==='assistant'&&mode==='online'&&!chatOpen(T)){T.unread=(T.unread||0)+1;saveThreads();updateBadges()}
   if(role!=='event')scheduleProactive(T);
@@ -1694,6 +1700,7 @@ function msgLine(T,m){
   else if(m.type==='redpacket')body=m.role==='user'?`[红包 ${esc(wmFmt(D.amount))}，祝福语：${D.note||'恭喜发财'}（${D.status==='claimed'?`已被${charById(D.by)?.name||''}领取`:D.status==='returned'?'已退还':'还没被领取'}）]`:`[红包:${D.amount}:${D.note||''}]`;
   else if(m.type==='transfer')body=m.role==='user'?`[转账 ${esc(wmFmt(D.amount))}，备注：${D.note||'无'}（${D.status==='claimed'?'已收款':D.status==='returned'?'已退还':'还没收款'}）]`:`[转账:${D.amount}:${D.note||''}]`;
   else if(m.type==='order')body=m.role==='user'?`[${D.kind==='food'?'点了外卖':'在淘宝下单'}给你：${D.name}，¥${(+D.price).toFixed(2)}（${D.status==='delivered'?'已送达':'配送中'}）]`:`[${D.kind==='food'?'外卖':'礼物'}:${D.name}:${D.price}]`;
+  if(m.replyTo)body=`[引用 ${m.replyTo.name} 的消息：${m.replyTo.text}]\n${body}`;
   if(m.role==='assistant')return isGroup(T)&&m.mode==='online'?`【${nm}】${body}`:body;
   return `${m.role==='event'?'[场景]':m.mode==='online'?'[线上·手机消息]':'[线下·见面]'} ${body}`;
 }
@@ -1976,6 +1983,18 @@ async function deleteChar(id){
   if(!S.threads.find(t=>t.id===S.state.cur))S.state.cur=S.threads[0].id;save('state');saveThreads();renderMsgs();toast('已删除');
 }
 
+/* 引用按会话暂存；发出后保存原消息快照，删除原消息仍可读。 */
+const replyDrafts=new Map();
+function replySnapshot(T,m){return {id:m.id,name:m.role==='user'?S.user.name:(charById(m.who)||charById(T.members[0]))?.name||'TA',text:String(m.type?preview(m)+(m.content?' '+m.content:''):m.content||'').slice(0,4000)}}
+function renderReplyDraft(){
+  const T=curT(),el=$('#replyDraft'),q=replyDrafts.get(T.id);
+  if(q&&!T.msgs.some(m=>m.id===q.id)){replyDrafts.delete(T.id);return renderReplyDraft()}
+  el.hidden=!q;el.innerHTML=q?`<span>回复 ${esc(q.name)}：${esc(q.text)}</span><button id="cancelReply" aria-label="取消引用">取消</button>`:'';
+  if(q)$('#cancelReply').onclick=()=>{replyDrafts.delete(T.id);renderReplyDraft()};
+}
+function quoteMessage(T,m){if(m.mode!=='online'||m.role==='event'||!T.msgs.includes(m))return;replyDrafts.set(T.id,replySnapshot(T,m));if(curT()===T){renderReplyDraft();$('#chatInput').focus()}}
+function replyHTML(m){const q=m.replyTo;if(!q)return '';return `<button class="msg-quote" data-quote-id="${esc(q.id)}" aria-label="查看引用的原消息"><b>${esc(q.name)}</b><span>${esc(q.text)}</span></button>`}
+function jumpToQuote(id){const T=curT(),i=T.msgs.findIndex(m=>m.id===id&&m.mode==='online');if(i<0)return toast('原消息已删除，引用内容仍保留在这里');const el=Array.from($('#chatList').querySelectorAll('[data-i]')).find(el=>+el.dataset.i===i);if(el){el.scrollIntoView({block:'center',behavior:'smooth'});el.classList.remove('quote-flash');void el.offsetWidth;el.classList.add('quote-flash')}}
 /* ========== 聊天 ========== */
 const fmtTime=ts=>{const d=new Date(ts),n=new Date(),hm=d.toTimeString().slice(0,5);return d.toDateString()===n.toDateString()?hm:`${d.getMonth()+1}月${d.getDate()}日 ${hm}`};
 function bubbleHTML(T,m,i){
@@ -1992,6 +2011,7 @@ function bubbleHTML(T,m,i){
   return `<div class="bubble" data-i="${i}">${esc(m.content)}</div>`;
 }
 function renderChat(){
+  renderReplyDraft();
   const T=curT(),grp=isGroup(T);
   $('#chatName').textContent=tName(T);$('#chatSub').textContent=chatSubText(T);
   let h='',lastTs=0,off=0;
@@ -2002,7 +2022,7 @@ function renderChat(){
     flush();
     if(m.ts-lastTs>5*60e3)h+=`<div class="tlabel">${fmtTime(m.ts)}</div>`;lastTs=m.ts;
     const me=m.role==='user',c=charById(m.who)||charById(T.members[0]);
-    h+=`<div class="row ${me?'me':'ta'}">${me?'':charAv(c)}<div class="col">${!me&&grp?`<div class="snm">${esc(c?.name||'')}</div>`:''}${bubbleHTML(T,m,i)}</div>${me?avHTML('user'):''}</div>`;
+    h+=`<div class="row ${me?'me':'ta'}">${me?'':charAv(c)}<div class="col">${!me&&grp?`<div class="snm">${esc(c?.name||'')}</div>`:''}${replyHTML(m)}${bubbleHTML(T,m,i)}</div>${me?avHTML('user'):''}</div>`;
   });
   flush();
   if(!h)h=`<div class="evt" style="margin-top:40px">${grp?`群聊「${esc(tName(T))}」开张啦<br>说点什么，或者空着点 ✦ 让大家先聊`:`和 ${esc(tName(T))} 的聊天从这里开始<br>发条消息，或者空着点 ✦ 让TA先找你`}</div>`;
@@ -2016,8 +2036,8 @@ ci.addEventListener('focus',()=>$('#plusPanel').classList.remove('on'));
 function userSent(T){renderChat();clearTimeout(replyTimer);replyTimer=setTimeout(()=>generate(T,'online'),S.settings.replyDelay*1000)}
 $('#chatSend').onclick=()=>{
   const T=curT(),t=ci.value.trim();clearTimeout(replyTimer);
-  if(!t){const last=T.msgs.at(-1);generate(T,'online',last&&last.role==='user'?null:isGroup(T)?'群里有人主动开启了新话题':`${tName(T)}主动给${S.user.name}发了消息`);return}
-  ci.value='';ci.dispatchEvent(new Event('input'));pushMsg(T,'online','user',t);userSent(T);
+  if(!t){if(replyDrafts.has(T.id))return toast('写一句回复，再把引用一起发出去吧');const last=T.msgs.at(-1);generate(T,'online',last&&last.role==='user'?null:isGroup(T)?'群里有人主动开启了新话题':`${tName(T)}主动给${S.user.name}发了消息`);return}
+  ci.value='';ci.dispatchEvent(new Event('input'));pushMsg(T,'online','user',t,{replyTo:replyDrafts.get(T.id)});replyDrafts.delete(T.id);userSent(T);
 };
 $('#chatMore').onclick=async()=>{
   const T=curT(),grp=isGroup(T);
@@ -2088,14 +2108,16 @@ function stopVoice(){try{vAudio?.pause();speechSynthesis.cancel()}catch(_){}vPla
 async function msgMenu(i){
   const T=curT(),m=T.msgs[i];if(!m)return;
   const isLastAI=m.role==='assistant'&&T.msgs.slice(i+1).every(x=>x.role==='assistant');
-  const opts=[{label:'复制',k:'copy'}];if(!m.type||m.type==='voice')opts.push({label:'编辑',k:'edit'});if(m.type==='voice')opts.push({label:m.showText?'收起文字':'转文字',k:'txt'});
-  if(isLastAI)opts.push({label:'重新生成',k:'regen'});opts.push({label:'删除',k:'del',danger:true});
-  const pick=await actionSheet(opts);if(pick<0)return;const k=opts[pick].k;
+  const opts=[{label:'复制',k:'copy'}];if(m.mode==='online'&&m.role!=='event')opts.push({label:'引用回复',k:'quote'});if(m.type==='image'&&m.role==='assistant')opts.push({label:'重新生成图片',k:'photo'});if(!m.type||m.type==='voice')opts.push({label:'编辑',k:'edit'});if(m.type==='voice')opts.push({label:m.showText?'收起文字':'转文字',k:'txt'});
+  if(isLastAI&&m.type!=='image')opts.push({label:'重新生成',k:'regen'});opts.push({label:'删除',k:'del',danger:true});
+  const pick=await actionSheet(opts);if(pick==null||pick<0||!opts[pick]||!S.threads.includes(T)||!T.msgs.includes(m))return;const k=opts[pick].k;
   const rerender=()=>{m.mode==='online'?renderChat():renderStory()};
+  if(k==='quote')quoteMessage(T,m);
+  if(k==='photo')await regeneratePhoto(T,m);
   if(k==='copy'){navigator.clipboard?.writeText(m.content).then(()=>toast('已复制'),()=>toast('复制失败'))}
   if(k==='txt'){m.showText=!m.showText;saveMsgs(T);rerender()}
   if(k==='edit'){const v=await editor(m.content);if(v!==null&&v.trim()){m.content=v.trim();delete m.audio;saveMsgs(T);rerender()}}
-  if(k==='del'){T.msgs.splice(i,1);if(i<T.mem.upTo){T.mem.upTo--;saveMem(T)}saveMsgs(T);rerender()}
+  if(k==='del'){i=T.msgs.indexOf(m);T.msgs.splice(i,1);if(i<T.mem.upTo){T.mem.upTo--;saveMem(T)}saveMsgs(T);rerender()}
   if(k==='regen'){let j=T.msgs.length;while(j>0&&T.msgs[j-1].role==='assistant'&&T.msgs[j-1].mode===m.mode)j--;T.msgs.splice(j);saveMsgs(T);rerender();generate(T,m.mode)}
 }
 async function openGift(i){
@@ -2110,9 +2132,9 @@ async function openGift(i){
   pushMsg(T,'online','event',`你领取了${who?.name||'TA'}的${rp?'红包':'转账'}，${esc(wmFmt(D.amount))} 已存入零钱`);renderChat();
 }
 (()=>{const L=$('#chatList');let t,lp=0;
-  L.addEventListener('pointerdown',e=>{const el=e.target.closest('[data-i]');if(!el)return;lp=0;t=setTimeout(()=>{lp=1;msgMenu(+el.dataset.i)},520)});
+  L.addEventListener('pointerdown',e=>{if(e.target.closest('[data-photo-regen],[data-quote-id]'))return;const el=e.target.closest('[data-i]');if(!el)return;lp=0;t=setTimeout(()=>{lp=1;msgMenu(+el.dataset.i)},520)});
   ['pointerup','pointerleave','pointercancel'].forEach(k=>L.addEventListener(k,()=>clearTimeout(t)));L.addEventListener('contextmenu',e=>e.preventDefault());
-  L.addEventListener('click',e=>{if(lp){lp=0;return}const el=e.target.closest('[data-i]');if(!el)return;const i=+el.dataset.i,T=curT(),m=T.msgs[i];
+  L.addEventListener('click',e=>{const q=e.target.closest('[data-quote-id]');if(q)return jumpToQuote(q.dataset.quoteId);const re=e.target.closest('[data-photo-regen]');if(re){const T=curT();regeneratePhoto(T,T.msgs[+re.dataset.photoRegen]);return}if(lp){lp=0;return}const el=e.target.closest('[data-i]');if(!el)return;const i=+el.dataset.i,T=curT(),m=T.msgs[i];
     if(el.dataset.voice!==undefined){if(vPlaying===el)return stopVoice();return playVoice(T,m,el)}
     if(el.dataset.gift!==undefined)return openGift(i);
     if(el.dataset.order!==undefined){const D=T.msgs[i].data||{},o=S.orders.find(x=>x.id===D.oid);return toast(o?`${D.name} · ${o.status==='delivered'?'已送达':'预计 '+new Date(o.eta).toTimeString().slice(0,5)+' 送达'}`:D.name)}
@@ -2142,7 +2164,7 @@ $('#storySend').onclick=()=>{
   else generate(T,'offline','继续推进剧情');
 };
 $('#storyWho').onclick=async()=>{const L=S.threads;const i=await actionSheet(L.map(T=>({label:(T===curT()?'✓ ':'')+tName(T)})),'和谁见面');if(i>=0){S.state.cur=L[i].id;save('state');renderStory()}};
-$('#storyList').addEventListener('click',e=>{const pic=e.target.closest('[data-pic]');if(pic){const im=pic.querySelector('img');if(im)return showViewer(im.src)}const el=e.target.closest('[data-i]');if(el)msgMenu(+el.dataset.i)});
+$('#storyList').addEventListener('click',e=>{const re=e.target.closest('[data-photo-regen]');if(re){const T=curT();regeneratePhoto(T,T.msgs[+re.dataset.photoRegen]);return}const pic=e.target.closest('[data-pic]');if(pic){const im=pic.querySelector('img');if(im)return showViewer(im.src)}const el=e.target.closest('[data-i]');if(el)msgMenu(+el.dataset.i)});
 $('#storyImg').onclick=()=>illustrate(curT());
 
 /* ========== 记忆 App ========== */
@@ -2368,17 +2390,30 @@ $('#ttsTest').onclick=async()=>{const st=S.settings,txt=$('#ttsTestText').value.
 $('#imgTest').onclick=async()=>{if(!imgReady())return toast('先把生图设置填完整');const d=$('#imgTestText').value.trim()||'星空下的小王子和狐狸';
   toast('画画中…一般要十几秒',30000);try{const img=await genImage(d,null);toast('画好啦');showViewer(img)}catch(e){toast(e.message,6000)}};
 function updShow(){const st=S.settings;$$('[data-show]').forEach(el=>{const [k,v]=el.dataset.show.split('=');el.style.display=(st[k]||'')===v?'':'none'});$$('[data-hide]').forEach(el=>{const [k,v]=el.dataset.hide.split('=');el.style.display=(st[k]||'')===v?'none':''})}
+const photoBusy=new WeakSet();
 function photoHTML(m,i){
-  const D=m.data||{},src=D.img;
-  if(src)return `<div class="pic" data-i="${i}" data-pic><img src="${src}" alt="照片"></div>`;
-  if(D.gen==='pending'&&imgReady())return `<div class="pic wait" data-i="${i}">📷 正在${m.mode==='offline'?'画这一幕':'拍照'}…</div>`;
-  return `<div class="tphoto" data-i="${i}"><div>${esc(m.content||D.caption||'一张照片')}</div><small>${m.mode==='offline'?'SCENE':'PHOTO'}</small></div>`;
+  const D=m.data||{},src=D.img,working=photoBusy.has(m),canRedraw=m.role==='assistant';let body;
+  if(src)body=`<div class="pic" data-i="${i}" data-pic><img src="${esc(src)}" alt="${esc(m.content||'照片')}"></div>`;
+  else if(working)body=`<div class="pic wait" data-i="${i}">📷 正在${m.mode==='offline'?'画这一幕':'拍照'}…</div>`;
+  else body=`<div class="tphoto" data-i="${i}"><div>${esc(m.content||D.caption||'一张照片')}</div><small>${m.mode==='offline'?'SCENE':'PHOTO'}</small></div>`;
+  return `<div class="photo-block" data-i="${i}">${body}${canRedraw?`<button class="btn photo-redraw" data-photo-regen="${i}"${working?' disabled':''}>${working?'正在生成图片…':D.gen==='fail'?'重试生成图片':'重新生成图片'}</button>`:''}${canRedraw?'<small class="photo-status">按原画面描述生成，使用当前生图接口</small>':''}</div>`;
+}
+function renderPhotoThread(T,m){if(curT()!==T)return;if(m.mode==='online'&&chatOpen(T))renderChat();if(m.mode==='offline'&&$('#app-story').classList.contains('open'))renderStory()}
+async function regeneratePhoto(T,m){
+  if(!m||m.type!=='image'||m.role!=='assistant'||photoBusy.has(m))return;
+  if(!imgReady())return toast('先在设置里填好生图接口，再来重画这张图片');
+  await fillPhoto(T,m);
 }
 async function fillPhoto(T,m){
-  if(!imgReady()){m.data.gen='text';saveMsgs(T);return}
-  try{m.data.img=await genImage(m.content,charById(m.who)||charById(T.members[0]));m.data.gen='done'}
-  catch(e){m.data.gen='fail';toast(e.message,4500)}
-  saveMsgs(T);if(curT()===T){if(m.mode==='online'&&chatOpen(T))renderChat();if(m.mode==='offline'&&$('#app-story').classList.contains('open'))renderStory()}
+  if(photoBusy.has(m)||!S.threads.includes(T)||!T.msgs.includes(m))return;
+  m.data||={};if(!imgReady()){m.data.gen='text';saveMsgs(T);return}
+  const old=m.data.img;photoBusy.add(m);m.data.gen='pending';renderPhotoThread(T,m);
+  try{
+    const img=await genImage(m.content,charById(m.who)||charById(T.members[0]));
+    if(!S.threads.includes(T)||!T.msgs.includes(m))return;
+    if(!img)throw Error('生图没有返回图片');m.data.img=img;m.data.gen='done';
+  }catch(e){if(S.threads.includes(T)&&T.msgs.includes(m)){m.data.gen=old?'done':'fail';toast((old?'这次没画好，原图已保留：':'图片生成失败：')+e.message,5000)}}
+  finally{photoBusy.delete(m);if(S.threads.includes(T)&&T.msgs.includes(m)){saveMsgs(T);renderPhotoThread(T,m)}}
 }
 let illBusy=false;
 async function illustrate(T,auto){

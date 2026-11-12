@@ -261,12 +261,12 @@ function wmStallInit(){
   if(!Array.isArray(S.user.familyDrafts))S.user.familyDrafts=[];
 }
 function wmXBtn(a,label,id=''){return `<button class="btn" data-wmx="${a}" data-id="${esc(id)}"${wmSocialBusy.has(a+':'+id)?' disabled':''}>${esc(label)}</button>`}
-function wmStallTerms(p){return p.mode==='barter'?`用「${p.giveName}」×1 换物`:`我出 ${wmFmt(p.price)}`}
+function wmStallTerms(p){return p.mode==='barter'?`每次用「${p.giveName}」×1 换物`:`每次我出 ${wmFmt(p.price)}`}
 function wmRenderStall(){
   const s=S.market.stall;
-  return wmCard('摆一个属于你的摊位',`<p>你出价收物，或拿背包里的物品交换。先发布需求，再看看谁来应单；你点确认后才扣款、交付并收货。</p><div class="btns">${wmXBtn('stall-new','自己写一条')}${wmXBtn('stall-ideas',wmSocialBusy.has('stall-ideas:')?'bb 正在想…':'✦ bb 替你想一想有什么可以上架')}</div><small>每次三条灵感，包含以钱易物与以物易物。生成灵感、联系应单者会使用当前 AI 接口；发布时不扣钱，也不自动成交。</small>`)
+  return wmCard('摆一个属于你的摊位',`<p>你出价收物，或拿背包里的物品交换。先发布需求，再看看谁来应单；每笔由你确认后才扣款、交付并收货。余额或交换物足够时可与多人交易，需求持续挂着，直到你撤下。</p><div class="btns">${wmXBtn('stall-new','自己写一条')}${wmXBtn('stall-ideas',wmSocialBusy.has('stall-ideas:')?'bb 正在想…':'✦ bb 替你想一想有什么可以上架')}</div><small>每次三条灵感，包含以钱易物与以物易物。生成灵感、联系应单者会使用当前 AI 接口；发布时不扣钱，也不自动成交。</small>`)
   +(s.drafts.length?wmCard('bb 想到的三样',s.drafts.map(d=>`<div class="wm-item"><b>${esc(d.name)}</b><p>${esc(d.desc)}</p><small>${d.mode==='barter'?'以物易物 · 发布时从背包选择交换物':'以钱易物 · 建议出价 '+esc(wmFmt(d.price))}</small>${wmXBtn('stall-draft','修改并上架',d.id)}</div>`).join('')):'')
-  +s.posts.slice().reverse().map(p=>wmCard(p.name,`<span class="tag">${p.status==='open'?'等待应单':p.status==='completed'?'已成交':'已撤下'}</span><p>${esc(p.desc)}</p><p>${esc(wmStallTerms(p))}</p>${p.status==='open'?`<div class="btns">${wmXBtn('stall-offers',wmSocialBusy.has('stall-offers:'+p.id)?'正在联系…':'看看谁来应单',p.id)}${wmXBtn('stall-close','撤下',p.id)}</div>`:''}${p.offers.map(o=>`<div class="wms-offer"><b>${esc(o.seller)} · ${esc(o.world)}</b><p>带来「${esc(o.name)}」×1<br>${esc(o.desc)}</p><p>${esc(o.message)}</p><small>${esc(wmStallTerms(p))} · ${o.status==='accepted'?'已确认交付':o.status==='declined'?'已婉拒':p.status==='open'?'等待你确认':'应单已结束'}</small>${p.status==='open'&&o.status==='pending'?`<div class="btns">${wmXBtn('stall-confirm','确认交换',o.id)}${wmXBtn('stall-decline','婉拒',o.id)}</div>`:''}${o.personId?wmFriendButton(o.personId):''}</div>`).join('')}`)).join('');
+  +s.posts.slice().reverse().map(p=>wmCard(p.name,`<span class="tag">${p.status==='open'?'持续收物':p.status==='completed'?'已成交':'已撤下'}</span><p>${esc(p.desc)}</p><p>${esc(wmStallTerms(p))}</p><small>已成交 ${p.offers.filter(o=>o.status==='accepted').length} 笔 · ${p.mode==='cash'?'当前余额 '+esc(wmFmt(S.wallet.balance)):'交换物剩余 '+(S.wallet.bag.find(b=>b.id===p.giveId)?.qty||0)+' 件'}</small>${p.status==='open'?`<div class="btns">${wmXBtn('stall-offers',wmSocialBusy.has('stall-offers:'+p.id)?'正在联系…':'看看谁来应单',p.id)}${wmXBtn('stall-close','撤下',p.id)}</div>`:p.status==='completed'?wmXBtn('stall-reopen','继续收物',p.id):''}${p.offers.map(o=>`<div class="wms-offer"><b>${esc(o.seller)} · ${esc(o.world)}</b><p>带来「${esc(o.name)}」×1<br>${esc(o.desc)}</p><p>${esc(o.message)}</p><small>${esc(wmStallTerms(p))} · ${o.status==='accepted'?'已确认交付':o.status==='declined'?'已婉拒':p.status==='open'?'等待你确认':'应单已结束'}</small>${p.status==='open'&&o.status==='pending'?`<div class="btns">${wmXBtn('stall-confirm','确认交换',o.id)}${wmXBtn('stall-decline','婉拒',o.id)}</div>`:''}${o.personId?wmFriendButton(o.personId):''}</div>`).join('')}`)).join('');
 }
 async function wmStallIdeas(){
   const lock='stall-ideas:';if(wmSocialBusy.has(lock))return;wmSocialBusy.add(lock);const market=S.market;wmRenderMarket();
@@ -280,7 +280,7 @@ async function wmStallIdeas(){
 }
 async function wmStallPost(draftId){
   const market=S.market,d=market.stall.drafts.find(d=>d.id===draftId)||{};
-  const r=await formSheet('上架求购 / 换物需求',[{k:'name',t:'text',l:'想要对方带来的物品'},{k:'desc',t:'textarea',l:'用途与要求（每条需求收一件，确认后结束）'},{k:'mode',t:'select',l:'我拿什么交换',opts:['我出钱','我出物品']},{k:'price',t:'text',l:`我的出价（${S.wallet.currency}，换物时忽略）`,num:1}],{name:d.name||'',desc:d.desc||'',mode:d.mode==='barter'?'我出物品':'我出钱',price:d.price||''});
+  const r=await formSheet('上架求购 / 换物需求',[{k:'name',t:'text',l:'想要对方带来的物品'},{k:'desc',t:'textarea',l:'用途与要求（每笔收一件，可与多位应单者交易）'},{k:'mode',t:'select',l:'我拿什么交换',opts:['我出钱','我出物品']},{k:'price',t:'text',l:`我的出价（${S.wallet.currency}，换物时忽略）`,num:1}],{name:d.name||'',desc:d.desc||'',mode:d.mode==='barter'?'我出物品':'我出钱',price:d.price||''});
   if(!r||S.market!==market)return;
   const name=wmText(r.name,100),desc=wmText(r.desc,1600),mode=r.mode==='我出物品'?'barter':'cash',price=wmNum(r.price);
   if(!name||!desc)throw Error('先写一下想收什么和具体要求');
@@ -318,7 +318,7 @@ async function wmStallConfirm(offerId){
     if(p.mode==='cash'){if(!Number.isFinite(p.price)||p.price<=0||p.price>S.wallet.balance)throw Error('当前余额不足，未扣款也未成交');wmMoney(-p.price,'集市收物 · '+o.name);}
     else{if(!bag||bag.qty<1)throw Error('交换物已不在背包里，这笔交易尚未成交');bag.qty--;}
     S.wallet.bag.push({id:uid(),name:o.name,desc:o.desc,kind:'goods',qty:1,from:o.seller,at:Date.now()});
-    o.status='accepted';p.status='completed';p.completedAt=Date.now();for(const other of p.offers)if(other.status==='pending')other.status='closed';
+    o.status='accepted';o.completedAt=Date.now();p.lastCompletedAt=o.completedAt;
     const order={id:uid(),name:o.name,desc:o.desc,seller:o.seller,qty:1,at:Date.now(),payment:wmStallTerms(p),status:'delivered',stallId:p.id,encounterChecked:true};market.orders.unshift(order);
     wmFeed(S.user.name+'确认了 '+o.seller+' 的应单，收下「'+o.name+'」。',{personId:o.personId});await Promise.all([save('wallet'),save('market')]);toast('成交啦，物品已放进背包 ✦');
   }finally{wmSocialBusy.delete(lock);wmRenderMarket()}
@@ -357,6 +357,7 @@ document.addEventListener('click',async e=>{
   const b=e.target.closest('[data-wmx]');if(!b||b.disabled)return;const a=b.dataset.wmx,id=b.dataset.id||'';
   try{
     if(a==='stall-ideas')await wmStallIdeas();if(a==='stall-new'||a==='stall-draft')await wmStallPost(id);if(a==='stall-offers')await wmStallOffers(id);if(a==='stall-confirm')await wmStallConfirm(id);
+    if(a==='stall-reopen'){const p=S.market.stall.posts.find(p=>p.id===id);if(p?.status==='completed'){p.status='open';for(const o of p.offers)if(o.status==='closed')o.status='pending';await save('market');wmRenderMarket()}}
     if(a==='stall-close'){const p=S.market.stall.posts.find(p=>p.id===id);if(p?.status==='open'&&await actionSheet([{label:'确认撤下'},{label:'继续挂着'}],'撤下这条需求？')===0){p.status='cancelled';await save('market');wmRenderMarket()}}
     if(a==='stall-decline'){for(const p of S.market.stall.posts){const o=p.offers.find(o=>o.id===id);if(p.status==='open'&&o?.status==='pending')o.status='declined'}await save('market');wmRenderMarket()}
     if(a==='family-generate')await wmFamilyGenerate();if(a==='family-add')await wmFamilyAdd(id);if(a==='family-chat'&&charById(id))openThread(threadOf(id).id);
