@@ -646,6 +646,7 @@ input,textarea,select{font:inherit;color:var(--text)}
 .photo-block{max-width:100%;min-width:0}.photo-block .pic{max-width:100%}.photo-block .photo-redraw{display:block;margin:6px 0 2px;padding:7px 10px;font-size:12px}.photo-redraw:disabled{opacity:.65}.photo-block .photo-status{display:block;color:var(--muted);font-size:11px;margin-top:6px}.para .photo-block{width:100%}
 
 </style>
+<link rel="stylesheet" href="keepsakes.css">
 </head>
 <body>
 <div id="phone">
@@ -743,6 +744,7 @@ input,textarea,select{font:inherit;color:var(--text)}
         <div class="field" data-cashow><label>提示缓存（仅 Anthropic 官方）</label><select data-ca="cache"><option value="off">关</option><option value="5m">5 分钟（写入 1.25 倍价，聊得勤时用）</option><option value="1h">1 小时（写入 2 倍价，回得慢时用）</option></select>
           <div class="hint" id="caStat" style="margin-top:6px"></div></div>
         <div class="btns" style="margin-bottom:12px"><button class="btn" id="caFetch">拉取模型</button><button class="btn" id="caTest">测试连接</button></div>
+        <div class="btns" id="charKeepsakes"><button class="btn" id="charMemory">记忆册</button><button class="btn" id="charAlbum">相簿</button></div>
         <div class="btns" id="charBtns"><button class="btn pri" id="charChat">和TA聊天</button><button class="btn danger" id="charDel">删除角色</button></div>
       </div>
       <div class="card glass" id="meCard">
@@ -868,6 +870,7 @@ input,textarea,select{font:inherit;color:var(--text)}
           <div class="field"><label>尺寸</label><select data-s="naiSize"><option value="832x1216">竖图 832×1216</option><option value="1216x832">横图 1216×832</option><option value="1024x1024">方图 1024×1024</option><option value="512x768">小竖图 512×768</option></select></div></div>
         <div class="two"><div class="field"><label>采样器</label><select data-s="naiSampler"><option value="k_euler_ancestral">Euler Ancestral</option><option value="k_euler">Euler</option><option value="k_dpmpp_2s_ancestral">DPM++ 2S Ancestral</option><option value="k_dpmpp_2m_sde">DPM++ 2M SDE</option><option value="k_dpmpp_2m">DPM++ 2M</option><option value="k_dpmpp_sde">DPM++ SDE</option></select></div>
           <div class="field"><label>步数 / 引导</label><div class="two"><input data-s="naiSteps" type="number" min="1" max="50"><input data-s="naiScale" type="number" step="0.5" min="0" max="10"></div></div></div>
+        <div class="two"><div class="field"><label>噪声调度</label><select data-s="naiSchedule"><option value="auto">自动（沿用模型默认）</option><option value="native">Native</option><option value="karras">Karras</option><option value="exponential">Exponential</option><option value="polyexponential">Polyexponential</option></select></div><div class="field"><label>种子 Seed</label><input data-s="naiSeed" inputmode="numeric" placeholder="留空或 -1 = 每次随机"><div class="hint">固定种子填 0—4294967295 的整数。</div></div></div>
         <div class="field"><label>固定正面词（画师串、画风，每张图都带，英文 tag）</label><textarea data-s="naiPos" placeholder="artist:xxx, best quality, amazing quality, very aesthetic, absurdres"></textarea></div>
         <div class="field"><label>负面词</label><textarea data-s="naiNeg"></textarea></div>
         <div class="hint" style="margin-bottom:12px">NAI 只认英文 tag：TA 拍照、剧情配图时，会先用主体 AI 把画面翻成 tag 再交给 NAI。</div>
@@ -943,7 +946,7 @@ const DB={db:null,
   get(k){return new Promise((res,rej)=>{const q=this.db.transaction('kv').objectStore('kv').get(k);q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error)})},
   set(k,v){return new Promise((res,rej)=>{const t=this.db.transaction('kv','readwrite');t.objectStore('kv').put(v,k);t.oncomplete=res;t.onerror=()=>rej(t.error)})}};
 const DEFAULTS={
-  settings:{baseUrl:'',apiKey:'',model:'',stream:false,temperature:0.9,maxTokens:1200,contextSize:40,summaryEvery:50,storyLength:400,replyDelay:2,showLock:true,timeAware:true,diaryCaught:true,ttsMode:'system',ttsBase:'',ttsKey:'',ttsModel:'tts-1',ttsVoice:'alloy',visBase:'',visKey:'',visModel:'',imgBase:'',imgKey:'',imgModel:'',imgSize:'1024x1024',imgStyle:'精致的日系动漫插画风格，柔和光线',storyAutoImg:false,imgProv:'openai',naiHost:'',naiKey:'',naiModel:'nai-diffusion-4-5-full',naiSize:'832x1216',naiSampler:'k_euler_ancestral',naiSteps:28,naiScale:5,naiPos:'',naiNeg:'lowres, bad anatomy, bad hands, text, error, missing fingers, worst quality, low quality, blurry, watermark',mmHost:'https://api.minimaxi.com',mmKey:'',mmGroup:'',mmModel:'speech-02-hd',mmVoice:'female-shaonv',mmSpeed:1,ghRepo:'',ghToken:'',ghAuto:true,ghLast:0,proactive:true,proMin:2,proMax:6,quietStart:1,quietEnd:8},
+  settings:{baseUrl:'',apiKey:'',model:'',stream:false,temperature:0.9,maxTokens:1200,contextSize:40,summaryEvery:50,storyLength:400,replyDelay:2,showLock:true,timeAware:true,diaryCaught:true,ttsMode:'system',ttsBase:'',ttsKey:'',ttsModel:'tts-1',ttsVoice:'alloy',visBase:'',visKey:'',visModel:'',imgBase:'',imgKey:'',imgModel:'',imgSize:'1024x1024',imgStyle:'精致的日系动漫插画风格，柔和光线',storyAutoImg:false,imgProv:'openai',naiHost:'',naiKey:'',naiModel:'nai-diffusion-4-5-full',naiSize:'832x1216',naiSampler:'k_euler_ancestral',naiSchedule:'auto',naiSeed:'',naiSteps:28,naiScale:5,naiPos:'',naiNeg:'lowres, bad anatomy, bad hands, text, error, missing fingers, worst quality, low quality, blurry, watermark',mmHost:'https://api.minimaxi.com',mmKey:'',mmGroup:'',mmModel:'speech-02-hd',mmVoice:'female-shaonv',mmSpeed:1,ghRepo:'',ghToken:'',ghAuto:true,ghLast:0,proactive:true,proMin:2,proMax:6,quietStart:1,quietEnd:8},
   user:{name:'宁宁',persona:'',avatar:''},
   stickers:[],moments:[],diaries:{},wallet:{balance:5200},orders:[],peek:{},
   theme:{pack:'prince',wallpaper:'',lockWallpaper:'',chatBg:'',icons:{}},
@@ -1023,7 +1026,7 @@ const SVG={
 const APPS=[{id:'wallet',name:'钱包'},{id:'market',name:'万界杂货铺'},{id:'chat',name:'消息'},{id:'story',name:'见面'},{id:'memory',name:'记忆'},{id:'char',name:'角色'},{id:'theme',name:'美化'},{id:'world',name:'世界书'},{id:'preset',name:'预设'},{id:'games',name:'游戏'},{id:'peek',name:'查手机'},{id:'shop',name:'淘宝'},{id:'food',name:'美团'},{id:'settings',name:'设置'}];
 const DOCK=['chat','story','memory','settings'];
 const GAMES=[{id:'denglin',name:'登临',sub:'范德林谋杀案 · 新婚寡妇 × 嫉恶如仇的探员。她有无懈可击的不在场证明，你有一整夜。',src:'games/denglin.html',cover:'games/denglin-cover.jpg'},{id:'2048',name:'2048',sub:'小王子陪你凑 2048，从一颗星星合成到月亮。五套皮肤：小王子、粉色毛绒、红格子田园、金棕酒馆、珍珠玫瑰。',src:'games/2048.html',cover:'games/2048-cover.jpg'}];
-const appIcon=id=>{const c=S.theme.icons[id],p=curPack().icons?.[id];return c?`<div class="ico"><img src="${c}"></div>`:p?`<div class="ico pk"><img src="${p}" alt=""></div>`:`<div class="ico">${SVG[id]}</div>`};
+const appIcon=id=>{if((id==='album'||(id==='memory'&&curPack()===PACKS.prince))&&!S.theme.icons[id]&&typeof ksSprite==='function')return `<div class="ico pk ks-new-icon">${ksSprite(id==='album'?'album':'book',64)}</div>`;const c=S.theme.icons[id],p=curPack().icons?.[id];return c?`<div class="ico"><img src="${c}"></div>`:p?`<div class="ico pk"><img src="${p}" alt=""></div>`:`<div class="ico">${SVG[id]}</div>`};
 const avHTML=(who,cls='av')=>{const p=who==='char'?S.char:S.user;return p.avatar?`<img class="${cls}" src="${p.avatar}">`:`<div class="${cls}">${esc((p.name||'?').slice(0,1))}</div>`};
 
 /* ========== 主屏 & 主题 ========== */
@@ -1725,6 +1728,7 @@ function buildPrompt(T,mode,extra,now=Date.now()){
   const recent=T.msgs.slice(-(+S.world.scanDepth||4)).map(m=>m.content).join('\n');
   const wi=worldInfo(extra||'',recent);const wiTxt=wi?`\n【世界设定】\n${wi}\n`:'';dyn+=wiTxt;
   if(T.mem.summary)semi+=`\n【长期记忆：之前发生过的事】\n${T.mem.summary}\n`;
+  if(typeof ksMemoryPrompt==='function')semi+=ksMemoryPrompt(T);
   const mo=momentsFor(T);if(mo)semi+=`\n【朋友圈近况】\n${mo}\n`;
   if(!grp){const d=(S.diaries[cs[0]?.id]||[])[0];if(d)semi+=`\n【${cs[0].name}最近写的日记（只有自己知道，${u.name}${d.peeked?'可能偷看过':'没看过'}）】\n${fmtTime(d.ts)} ${d.title||''}：${d.text.slice(0,300)}\n`}
   const lastTs=lastRealTs(T);
@@ -1932,7 +1936,7 @@ let msgTab='chats';
 function renderMsgs(){
   $$('#msgTabs [data-tab]').forEach(b=>b.classList.toggle('on',b.dataset.tab===msgTab));
   $('#msgsTitle').textContent={chats:'消息',contacts:'联系人',moments:'朋友圈'}[msgTab];
-  $('#msgsAct').textContent=msgTab==='moments'?'📷':'＋';
+  $('#msgsAct').innerHTML=msgTab==='moments'&&typeof ksSprite==='function'?ksSprite('camera',32):msgTab==='moments'?'📷':'＋';$('#msgsAct').setAttribute('aria-label',msgTab==='moments'?'发朋友圈':'新建聊天');
   const body=$('#msgsBody');
   if(msgTab==='chats'){
     const L=[...S.threads].sort((a,b)=>(lastRealTs(b)||0)-(lastRealTs(a)||0));
@@ -2046,7 +2050,7 @@ $('#chatMore').onclick=async()=>{
   if(grp)opts.push({label:'👥 群成员和群名',k:'grp'});
   opts.push({label:'🧹 清空这里的聊天和剧情',k:'clear',danger:true});
   const i=await actionSheet(opts,tName(T));if(i<0)return;const k=opts[i].k;
-  if(k==='story')openApp('story');if(k==='mem')openApp('memory');if(k==='diary')openDiary(T.members[0]);if(k==='peek')openPeek(T.members[0]);
+  if(k==='story')openApp('story');if(k==='mem'){if(typeof ksOpenMemory==='function')ksOpenMemory(T.members[0]);else openApp('memory')};if(k==='diary')openDiary(T.members[0]);if(k==='peek')openPeek(T.members[0]);
   if(k==='grp'){const r=await formSheet('群设置',[{k:'name',t:'text',l:'群名'},{k:'members',t:'multi',l:'群成员',opts:S.chars.map(c=>[c.id,c.name])}],{name:T.name,members:[...T.members]});
     if(r&&r.members?.length){const add=r.members.filter(x=>!T.members.includes(x));T.name=(r.name||'').trim();T.members=r.members;saveThreads();if(add.length)pushMsg(T,'online','event',`${S.user.name}邀请${add.map(x=>charById(x)?.name).join('、')}加入了群聊`);renderChat()}}
   if(k==='clear'){if(await actionSheet([{label:'确定清空',danger:true}])!==0)return;T.msgs=[];T.mem.upTo=0;saveMsgs(T);saveMem(T);renderChat()}
@@ -2188,6 +2192,8 @@ $('#charPick').onclick=e=>{const b=e.target.closest('[data-pick]');if(!b)return;
 function readCharForm(){const c=editingChar();if(c){$$('[data-c]').forEach(el=>c[el.dataset.c]=el.value.trim());c.api={...(c.api||{})};$$('[data-ca]').forEach(el=>c.api[el.dataset.ca]=el.value.trim());c.name||='TA';saveChars()}$$('[data-u]').forEach(el=>S.user[el.dataset.u]=el.value.trim());S.user.name||='我';save('user')}
 $('#charSave').onclick=()=>{readCharForm();renderChar();toast('已保存')};
 $$('[data-avatar]').forEach(b=>b.onclick=async()=>{const f=await pickFile('image/*');if(!f)return;readCharForm();const img=await fileToImg(f,400,'image/png');if(b.dataset.avatar==='char'){const c=editingChar();c.avatar=img;saveChars()}else{S.user.avatar=img;save('user')}renderChar()});
+$('#charMemory').onclick=()=>{readCharForm();if(editingChar()&&typeof ksOpenMemory==='function')ksOpenMemory(editingChar().id)};
+$('#charAlbum').onclick=()=>{readCharForm();if(editingChar()&&typeof ksOpenAlbum==='function')ksOpenAlbum(editingChar().id)};
 $('#charChat').onclick=()=>{readCharForm();openThread(threadOf(editingChar().id).id)};
 $('[data-ca=fmt]').onchange=e=>{$('[data-cashow]').style.display=e.target.value==='anthropic'?'':'none'};
 $('#caFetch').onclick=async()=>{readCharForm();const a=editingChar().api;if(!a.base||!a.key)return toast('先填接口地址和密钥');toast('拉取中…',6000);
@@ -2250,7 +2256,7 @@ async function genPost(c,ts){
   const out=await callAPI([{role:'system',content:`你是「${c.name}」本人，现在要发一条朋友圈。${charCtx(c)}`},{role:'user',content:`以${c.name}的身份发一条朋友圈：内容贴合你的性格、近况和你们最近发生的事，可以是日常、心情、暗戳戳的思念或吐槽，像真人随手发的，30~100字，可以带 emoji，不要写成日记。如果这条适合配一张照片，在 photo 里写具体的画面描述，不需要就留空。只输出 JSON：{"text":"朋友圈内容","photo":"画面描述或空字符串"}`}],{temperature:1,max_tokens:500,char:c});
   const j=parseJSON(out);if(!j.text)throw new Error('没写出来');
   const p={id:uid(),who:c.id,text:String(j.text).trim(),imgs:[],ts:ts||Date.now(),likes:[],comments:[]};if(j.photo?.trim())p.photo=j.photo.trim();S.moments.unshift(p);S.moments.sort((a,b)=>b.ts-a.ts);save('moments');
-  if(p.photo&&imgReady())genImage(p.photo,c).then(img=>{p.imgs=[img];save('moments');if(msgTab==='moments'&&$('#app-msgs').classList.contains('open'))renderMoments()}).catch(()=>{});return p;
+  if(p.photo&&imgReady()){const meta={};genImage(p.photo,c,meta).then(img=>{p.imgs=[img];p.generations=[meta];save('moments');if(typeof ksSyncPhotos==='function')ksSyncPhotos();if(msgTab==='moments'&&$('#app-msgs').classList.contains('open'))renderMoments()}).catch(()=>{});}return p;
 }
 async function autoPosts(manual){
   if(momentBusy)return;if(!apiReady())return manual&&toast('先去「设置」填好 API～');
@@ -2288,8 +2294,8 @@ async function caption(img){
   if(!r.ok)throw new Error(`识图接口报错 ${r.status}（这个模型可能不支持看图）`);
   const j=await r.json();const t=j.choices?.[0]?.message?.content;if(!t)throw new Error('识图没有返回内容');return clean(t);
 }
-async function genImage(desc,c){
-  if(S.settings.imgProv==='nai')return naiImage(desc,c);
+async function genImage(desc,c,meta){
+  if(S.settings.imgProv==='nai')return naiImage(desc,c,false,meta);
   const s=S.settings,base=(s.imgBase||s.baseUrl).replace(/\/+$/,''),key=s.imgKey||s.apiKey;
   const look=c?.look?`画面中如果出现${c.name}，外貌是：${c.look}。`:'';const ulook=S.user.look?`画面中如果出现${S.user.name}，外貌是：${S.user.look}。`:'';
   const r=await fetch(base+'/images/generations',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+key},body:JSON.stringify({model:s.imgModel,prompt:`${desc}。${look}${ulook}${s.imgStyle||''}`,n:1,size:s.imgSize||'1024x1024'})});
@@ -2320,12 +2326,16 @@ async function toTags(desc,c){
   try{const r=await callAPI([{role:'system',content:'你是 NovelAI 绘图提示词助手。把画面描述改写成英文 danbooru 风格 tag，用逗号分隔，先写人数（如 1boy, 1girl, 1boy 1girl）、再写人物外貌、动作表情、服装、场景、光线、构图。只输出 tag，不要解释，不要中文，不超过 60 个 tag。'},{role:'user',content:`画面：${desc}\n${look}`}],{max_tokens:300,temperature:.4});
     const t=clean(r).replace(/\n/g,', ').replace(/^tags?[:：]\s*/i,'');return /[a-z]/i.test(t)?t:desc}catch(_){return desc}
 }
-async function naiImage(desc,c,raw){
+async function naiImage(desc,c,raw,meta){
   const s=S.settings;if(!s.naiKey)throw new Error('还没填 NovelAI 的 Token');
   const host=(s.naiHost||'https://image.novelai.net').replace(/\/+$/,''),url=/\/ai\/generate-image$/.test(host)?host:host+'/ai/generate-image';
+  const [w,h]=(s.naiSize||'832x1216').split('x').map(Number),v4=/diffusion-[45]/.test(s.naiModel);
+  const rawSeed=String(s.naiSeed??'').trim();if(rawSeed!==''&&rawSeed!=='-1'&&(!/^\d+$/.test(rawSeed)||!Number.isInteger(Number(rawSeed))||Number(rawSeed)>4294967295))throw Error('种子要填 0—4294967295 的整数，留空或 -1 表示随机');
+  const seed=rawSeed===''||rawSeed==='-1'?Math.floor(Math.random()*4294967296):Number(rawSeed);
+  const schedule=['native','karras','exponential','polyexponential'].includes(s.naiSchedule)?s.naiSchedule:(v4?'karras':'native');
   const tags=raw?desc:await toTags(desc,c),prompt=[tags,s.naiPos].filter(Boolean).join(', '),neg=s.naiNeg||'';
-  const [w,h]=(s.naiSize||'832x1216').split('x').map(Number),v4=/diffusion-[45]/.test(s.naiModel),seed=Math.floor(Math.random()*4294967295);
-  const P={width:w,height:h,scale:+s.naiScale||5,sampler:s.naiSampler||'k_euler_ancestral',steps:+s.naiSteps||28,n_samples:1,ucPreset:0,qualityToggle:true,seed,negative_prompt:neg,noise_schedule:v4?'karras':'native'};
+  const P={width:w,height:h,scale:+s.naiScale||5,sampler:s.naiSampler||'k_euler_ancestral',steps:+s.naiSteps||28,n_samples:1,ucPreset:0,qualityToggle:true,seed,negative_prompt:neg,noise_schedule:schedule};
+  if(meta)Object.assign(meta,{provider:'nai',model:s.naiModel,seed,noise_schedule:schedule,sampler:P.sampler,steps:P.steps,scale:P.scale,size:s.naiSize,prompt,negative_prompt:neg});
   if(v4)Object.assign(P,{params_version:3,cfg_rescale:0,dynamic_thresholding:false,legacy:false,legacy_v3_extend:false,add_original_image:true,prefer_brownian:true,deliberate_euler_ancestral_bug:false,characterPrompts:[],use_coords:false,
     v4_prompt:{caption:{base_caption:prompt,char_captions:[]},use_coords:false,use_order:true},v4_negative_prompt:{caption:{base_caption:neg,char_captions:[]},legacy_uc:false}});
   else Object.assign(P,{sm:false,sm_dyn:false});
@@ -2409,9 +2419,9 @@ async function fillPhoto(T,m){
   m.data||={};if(!imgReady()){m.data.gen='text';saveMsgs(T);return}
   const old=m.data.img;photoBusy.add(m);m.data.gen='pending';renderPhotoThread(T,m);
   try{
-    const img=await genImage(m.content,charById(m.who)||charById(T.members[0]));
+    const meta={},img=await genImage(m.content,charById(m.who)||charById(T.members[0]),meta);
     if(!S.threads.includes(T)||!T.msgs.includes(m))return;
-    if(!img)throw Error('生图没有返回图片');m.data.img=img;m.data.gen='done';
+    if(!img)throw Error('生图没有返回图片');m.data.img=img;m.data.gen='done';m.data.generation=meta;if(typeof ksRecordPhoto==='function')ksRecordPhoto(T,m,old);
   }catch(e){if(S.threads.includes(T)&&T.msgs.includes(m)){m.data.gen=old?'done':'fail';toast((old?'这次没画好，原图已保留：':'图片生成失败：')+e.message,5000)}}
   finally{photoBusy.delete(m);if(S.threads.includes(T)&&T.msgs.includes(m)){saveMsgs(T);renderPhotoThread(T,m)}}
 }
@@ -2449,18 +2459,19 @@ async function genPeek(c){
 }
 function renderPeek(){
   const T=curT(),cs=tChars(T);let c=charById(peekChar)||cs[0]||S.chars[0];peekChar=c.id;const P=S.peek[c.id];
+  if(typeof ksApplyPeekIcons==='function')ksApplyPeekIcons();
   $('#peekTitle').innerHTML=`${esc(c.name)}的手机${S.chars.length>1?' <small style="font-size:11px;color:var(--muted)">点我换人</small>':''}`;
   $$('#peekTabs button').forEach(b=>b.classList.toggle('on',b.dataset.pt===peekTab));
   const B=$('#peekBody');
-  if(peekBusy){B.innerHTML=`<div class="pkempty">🔍<br>正在偷偷解锁${esc(c.name)}的手机…</div>`;return}
-  if(!P){B.innerHTML=`<div class="pkempty">📱<br>${esc(c.name)}的手机就放在桌上，屏幕还亮着。<br><button class="btn pri" id="peekGo">偷偷拿起来看看</button><div class="hint">内容由 AI 按 TA 的人设和你们最近的事现编。${S.settings.diaryCaught?'有可能被 TA 发现哦。':''}</div></div>`;$('#peekGo').onclick=()=>genPeek(c);return}
+  if(peekBusy){B.innerHTML=`<div class="pkempty">${typeof ksPeekGlyph==='function'?ksPeekGlyph('busy'):'🔍'}<br>正在偷偷解锁${esc(c.name)}的手机…</div>`;return}
+  if(!P){B.innerHTML=`<div class="pkempty">${typeof ksPeekGlyph==='function'?ksPeekGlyph('phone'):'📱'}<br>${esc(c.name)}的手机就放在桌上，屏幕还亮着。<br><button class="btn pri" id="peekGo">偷偷拿起来看看</button><div class="hint">内容由 AI 按 TA 的人设和你们最近的事现编。${S.settings.diaryCaught?'有可能被 TA 发现哦。':''}</div></div>`;$('#peekGo').onclick=()=>genPeek(c);return}
   const ago=Math.round((Date.now()-P.at)/6e4),head=`<div class="pkat">上次翻看：${ago<1?'刚刚':ago<60?ago+' 分钟前':Math.round(ago/60)+' 小时前'}</div>`;
   let h='';
   if(peekTab==='chats')h=(P.chats||[]).map((ch,k)=>`<details class="pkchat glass"><summary><span class="pkav">${esc((ch.name||'?').slice(0,1))}</span><span class="tt"><b>${esc(ch.name)}</b><small>${esc(ch.relation||'')} · ${esc(ch.msgs?.at(-1)?.t||'')}</small></span></summary><div class="pkmsgs">${(ch.msgs||[]).map(m=>`<div class="pkm ${m.me?'me':''}"><span>${esc(m.t)}</span></div>`).join('')}</div></details>`).join('');
   if(peekTab==='memo')h=(P.memo||[]).map(m=>`<div class="card glass pkmemo"><h4>${esc(m.title)}</h4><div>${esc(m.text)}</div></div>`).join('');
   if(peekTab==='search')h=`<div class="card glass">${(P.search||[]).map(q=>`<div class="pksq">🔍 ${esc(q)}</div>`).join('')}</div>`;
   if(peekTab==='album')h=`<div class="pkalbum">${(P.album||[]).map(a=>`<div class="tphoto"><div>${esc(a.desc)}</div><small>${esc(a.note||'PHOTO')}</small></div>`).join('')}</div>`;
-  if(peekTab==='cart')h=(P.cart||[]).map(x=>`<div class="li glass"><div class="pkcart">🛍️</div><div class="t"><b>${esc(x.name)}</b><small>${esc(x.why||'')}</small></div><span class="tag">¥${esc(String(x.price))}</span></div>`).join('');
+  if(peekTab==='cart')h=(P.cart||[]).map(x=>`<div class="li glass"><div class="pkcart">${typeof ksPeekGlyph==='function'?ksPeekGlyph('cart'):'🛍️'}</div><div class="t"><b>${esc(x.name)}</b><small>${esc(x.why||'')}</small></div><span class="tag">¥${esc(String(x.price))}</span></div>`).join('');
   B.innerHTML=head+(h||'<div class="pkempty">这里空空的</div>');
 }
 $('#peekTabs').onclick=e=>{const b=e.target.closest('[data-pt]');if(!b)return;peekTab=b.dataset.pt;renderPeek();$('#peekBody').scrollTop=0};
@@ -2633,7 +2644,7 @@ function buildBackup(lite){
 }
 async function applyBackup(d){
   if(d.app!=='moonsea-phone')throw new Error('不是小手机的备份文件');
-  const keep={};for(const k of ['apiKey','ttsKey','visKey','imgKey','ghToken'])keep[k]=S.settings[k];
+  const keep={};for(const k of ['apiKey','ttsKey','visKey','imgKey','naiKey','mmKey','ghToken'])keep[k]=S.settings[k];
   for(const k in DEFAULTS){if(d[k]===undefined)continue;if(k==='settings'){S.settings={...S.settings,...d.settings};for(const x in keep)S.settings[x]=d.settings[x]||keep[x]}else S[k]=d[k];await save(k)}
   if(d.chars){const ok=new Map(S.chars.map(c=>[c.id,c.api?.key]));S.chars=d.chars.map(c=>c.api&&!c.api.key&&ok.get(c.id)?{...c,api:{...c.api,key:ok.get(c.id)}}:c);S.threads=d.threads.map(t=>({...t,msgs:t.msgs||[],mem:t.mem||{summary:'',upTo:0}}))}
   else if(d.char){S.chars=[{id:'c1',voice:'',...d.char,id:'c1'}];S.threads=[{id:'t_c1',type:'single',members:['c1'],name:'',unread:0,nextPro:0,msgs:(d.messages||[]).map(m=>m.role==='assistant'?{...m,who:'c1'}:m),mem:d.memory||{summary:'',upTo:0}}]}
@@ -2690,7 +2701,7 @@ $('#ghBackup').onclick=()=>backupGH(false);$('#ghRestore').onclick=restoreGH;
 setTimeout(()=>{const st=S.settings;if(st?.ghAuto&&st.ghRepo&&st.ghToken&&Date.now()-(st.ghLast||0)>20*36e5)backupGH(true)},12000);
 
 $('#clearChat').onclick=async()=>{if(await actionSheet([{label:'清空所有角色的聊天和剧情',danger:true}])!==0)return;for(const T of S.threads){T.msgs=[];T.mem.upTo=0;T.unread=0;saveMsgs(T);saveMem(T)}saveThreads();updateBadges();toast('已清空')};
-$('#clearMem').onclick=async()=>{if(await actionSheet([{label:'清空所有长期记忆',danger:true}])!==0)return;for(const T of S.threads){T.mem={summary:'',upTo:0};saveMem(T)}toast('长期记忆已清空')};
+$('#clearMem').onclick=async()=>{if(await actionSheet([{label:'清空所有长期记忆',danger:true}])!==0)return;for(const T of S.threads){T.mem={summary:'',upTo:0};saveMem(T)}if(S.keepsakes){S.keepsakes.books={};save('keepsakes')}toast('长期记忆已清空')};
 
 /* iOS 主屏模式底部空隙修正 */
 let fitH=0;
@@ -2745,6 +2756,7 @@ function underColor(){
 // 独立试用版不注册 Service Worker，避免与正式版缓存交叉。
 </script>
 <script src="world-market.js"></script>
+<script src="keepsakes.js"></script>
 <script>
 /* ========== 启动 ========== */
 (async()=>{

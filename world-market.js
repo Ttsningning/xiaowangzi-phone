@@ -160,7 +160,7 @@ function wmInit(){
   if(!w.migrated){wmEntry(w.balance,'迁移期初余额（旧版历史流水不可追溯）',{opening:true});w.migrated=true;}
   homeMigrate();
   if(!S.home.marketApps){const missing=['wallet','market'].filter(app=>!S.home.pages.flat().some(x=>x.app===app));if(missing.length)S.home.pages.push(missing.map(app=>({id:uid(),type:'app',app})));S.home.marketApps=true;save('home');}
-  wmSocialInit();wmStallInit();wmFamilyRender();wmTick();save('wallet');save('market');
+  wmSocialInit();wmStallInit();if(typeof ksInit==='function')ksInit();wmFamilyRender();wmTick();save('wallet');save('market');
 }
 function wmWorld(){return (S.world.books||[]).filter(b=>b.enabled).flatMap(b=>b.entries.filter(e=>e.enabled).map(e=>e.content)).join('\n').slice(0,10000)}
 function wmContext(){return `已采用的平台汇率（沿用，不随卖家情绪改变）：${JSON.stringify(S.market.rates||{})}。用户：${S.user.name}；身份：${S.user.persona||'未设定'}；货币：${S.wallet.currency}。世界书：\n${wmWorld()}`}

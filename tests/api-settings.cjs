@@ -42,5 +42,13 @@ function sse(events,step=1){
   reply={ok:true,arrayBuffer:async()=>new ArrayBuffer(0)};
   await assert.rejects(ctx.naiImage('1girl',null,true),/request inspected/);
   assert.equal(request.body.model,'nai-diffusion-5-full');assert.equal(request.body.parameters.v4_prompt.caption.base_caption,'1girl');assert.ok(request.body.parameters.v4_negative_prompt);assert.equal(request.body.parameters.noise_schedule,'karras');
+  for(const schedule of ['native','karras','exponential','polyexponential']){
+    Object.assign(settings,{naiSchedule:schedule,naiSeed:'4294967295'});const meta={};
+    await assert.rejects(ctx.naiImage('1girl',null,true,meta),/request inspected/);
+    assert.equal(request.body.parameters.seed,4294967295);assert.equal(request.body.parameters.noise_schedule,schedule);assert.equal(meta.seed,4294967295);assert.equal(meta.noise_schedule,schedule);
+  }
+  settings.naiSeed='0';await assert.rejects(ctx.naiImage('1girl',null,true),/request inspected/);assert.equal(request.body.parameters.seed,0);
+  settings.naiSeed='-1';await assert.rejects(ctx.naiImage('1girl',null,true),/request inspected/);assert.ok(Number.isInteger(request.body.parameters.seed)&&request.body.parameters.seed>=0&&request.body.parameters.seed<=4294967295);
+  for(const seed of ['-2','1.2','4294967296','abc']){settings.naiSeed=seed;await assert.rejects(ctx.naiImage('1girl',null,true),/种子/)}
   console.log('PASS API settings: chunked UTF-8 SSE, partial display, interrupted/error streams, non-streaming, Anthropic cache/usage, custom MiniMax voice and V5 payload');
 })().catch(e=>{console.error(e);process.exitCode=1});
