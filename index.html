@@ -511,7 +511,7 @@ input,textarea,select{font:inherit;color:var(--text)}
 
 /* games */
 .gcard{display:block;width:100%;text-align:left;border-radius:22px;overflow:hidden;margin-bottom:16px;border:1px solid var(--line);background:#0e1311;box-shadow:0 10px 30px rgba(0,0,0,.35)}
-.gcard .cv{aspect-ratio:16/10;background:center/cover no-repeat}
+.gcard .cv{display:block;width:100%;aspect-ratio:16/10;object-fit:cover;object-position:center}
 .gcard .in{padding:12px 14px 14px}
 .gcard b{display:block;font-family:"Songti SC","STSong",serif;font-size:20px;letter-spacing:.2em;color:#ffe9c4}
 .gcard small{font-size:12.5px;color:var(--muted);line-height:1.6;display:block;margin-top:4px}
@@ -526,6 +526,10 @@ input,textarea,select{font:inherit;color:var(--text)}
 .sw.on{background:#7fb3f0}.sw.on::after{transform:translateX(18px)}
 .tag{font-size:11px;padding:2px 8px;border-radius:99px;background:rgba(255,233,184,.16);color:var(--gold);flex:none}
 .tag.blue{background:rgba(188,215,255,.16);color:var(--accent)}
+.preset-pick{width:40px;height:40px;flex:0 0 40px;position:relative;padding:0;background:none;border:0;border-radius:10px}
+.preset-pick img{display:block;width:100%;height:100%;object-fit:contain}
+.preset-pick span{position:absolute;right:-3px;bottom:-2px;width:16px;height:16px;border-radius:50%;display:grid;place-items:center;background:var(--accent);color:var(--appbg);font-size:11px;line-height:1}
+.preset-pick:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 .radio{width:22px;height:22px;border-radius:50%;border:2px solid var(--accent);flex:none;position:relative}
 .radio.on::after{content:'';position:absolute;inset:3px;border-radius:50%;background:var(--accent)}
 .chk{display:flex;align-items:center;gap:8px;font-size:14px;margin-bottom:12px}
@@ -1010,7 +1014,7 @@ const SVG={
   settings:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg>'};
 const APPS=[{id:'wallet',name:'钱包'},{id:'market',name:'万界杂货铺'},{id:'chat',name:'消息'},{id:'story',name:'见面'},{id:'memory',name:'记忆'},{id:'char',name:'角色'},{id:'theme',name:'美化'},{id:'world',name:'世界书'},{id:'preset',name:'预设'},{id:'games',name:'游戏'},{id:'peek',name:'查手机'},{id:'shop',name:'淘宝'},{id:'food',name:'美团'},{id:'settings',name:'设置'}];
 const DOCK=['chat','story','memory','settings'];
-const GAMES=[{id:'denglin',name:'登临',sub:'范德林谋杀案 · 新婚寡妇 × 嫉恶如仇的探员。她有无懈可击的不在场证明，你有一整夜。',src:'games/denglin.html',cover:'games/denglin-cover.jpg'},{id:'2048',name:'2048',sub:'小王子陪你凑 2048，从一颗星星合成到月亮。五套皮肤：小王子、粉色毛绒、红格子田园、金棕酒馆、珍珠玫瑰。',src:'games/2048.html',cover:'games/2048/prince/t2048.webp',fit:'contain',bg:'url(games/2048/prince/bg.jpg) center/cover'}];
+const GAMES=[{id:'denglin',name:'登临',sub:'范德林谋杀案 · 新婚寡妇 × 嫉恶如仇的探员。她有无懈可击的不在场证明，你有一整夜。',src:'games/denglin.html',cover:'games/denglin-cover.jpg'},{id:'2048',name:'2048',sub:'小王子陪你凑 2048，从一颗星星合成到月亮。五套皮肤：小王子、粉色毛绒、红格子田园、金棕酒馆、珍珠玫瑰。',src:'games/2048.html',cover:'games/2048-cover.jpg'}];
 const appIcon=id=>{const c=S.theme.icons[id],p=curPack().icons?.[id];return c?`<div class="ico"><img src="${c}"></div>`:p?`<div class="ico pk"><img src="${p}" alt=""></div>`:`<div class="ico">${SVG[id]}</div>`};
 const avHTML=(who,cls='av')=>{const p=who==='char'?S.char:S.user;return p.avatar?`<img class="${cls}" src="${p.avatar}">`:`<div class="${cls}">${esc((p.name||'?').slice(0,1))}</div>`};
 
@@ -1542,9 +1546,9 @@ function psRender(){
     return;
   }
   $('#psTitle').textContent='预设';$('#psAct').textContent='导入';
-  body.innerHTML=`<div class="card glass"><div class="muted">预设决定 TA 怎么说话：文风、篇幅、规矩。点圆圈切换正在用的预设，点名字进去编辑。可以导入酒馆的预设 JSON（会读取里面开启的提示词）。</div>
+  body.innerHTML=`<div class="card glass"><div class="muted">预设决定 TA 怎么说话：文风、篇幅、规矩。点图标切换正在用的预设，点名字进去编辑。可以导入酒馆的预设 JSON（会读取里面开启的提示词）。</div>
     <div class="btns" style="margin-top:12px"><button class="btn" id="psNew">新建预设</button></div></div>`+
-    L.map(p=>`<div class="li" data-pedit="${p.id}"><button class="radio ${S.presets.active===p.id?'on':''}" data-puse="${p.id}" aria-label="使用"></button><span class="t"><b>${esc(p.name)}</b><small>${esc((p.main||'').slice(0,40))}</small></span>${p.builtin?'<span class="tag blue">内置</span>':''}</div>`).join('');
+    L.map(p=>`<div class="li" data-pedit="${p.id}"><button class="preset-pick" data-puse="${p.id}" aria-label="使用${esc(p.name)}" aria-pressed="${S.presets.active===p.id}"><img src="themes/prince/i-preset.png" alt="">${S.presets.active===p.id?'<span aria-hidden="true">✓</span>':''}</button><span class="t"><b>${esc(p.name)}</b><small>${esc((p.main||'').slice(0,40))}</small></span>${p.builtin?'<span class="tag blue">内置</span>':''}</div>`).join('');
   $('#psNew').onclick=()=>{const c={...structuredClone(DEFAULT_PRESET),id:uid(),name:'我的预设',builtin:false};L.push(c);save('presets');ps.edit=c.id;psRender()};
 }
 $('#psBody').addEventListener('click',e=>{
@@ -1622,7 +1626,7 @@ $('#banner').onclick=()=>{$('#banner').classList.remove('show');$('#lock').class
 $('#lockNote').addEventListener('click',e=>{e.stopPropagation();$('#lock').classList.add('hide');const t=e.target.closest('[data-t]');openThread(t?.dataset.t||curT().id)});
 
 /* 游戏 */
-function renderGames(){$('#gameList').innerHTML=GAMES.map(g=>`<button class="gcard" data-game="${g.id}"><div class="cv" style="background-image:url(${g.cover})${g.fit?`,${g.bg};background-size:auto 70%,cover;background-position:center;background-repeat:no-repeat`:''}"></div><div class="in"><b>${g.name}</b><small>${esc(g.sub)}</small></div></button>`).join('')+'<div class="evt">更多游戏陆续搬进来～</div>'}
+function renderGames(){$('#gameList').innerHTML=GAMES.map(g=>`<button class="gcard" data-game="${g.id}"><img class="cv" src="${g.cover}" alt="${esc(g.name)}游戏画面" loading="lazy" decoding="async"><div class="in"><b>${g.name}</b><small>${esc(g.sub)}</small></div></button>`).join('')+'<div class="evt">更多游戏陆续搬进来～</div>'}
 $('#gameList').onclick=e=>{const b=e.target.closest('[data-game]');if(b)openGame(b.dataset.game)};
 function openGame(id){const g=GAMES.find(x=>x.id===id);if(!g)return;$('#gameTitle').textContent=g.name;const f=$('#gameFrame');if(f.dataset.g!==id){f.src=g.src;f.dataset.g=id}$('#gameView').classList.add('open')}
 $('#gameClose').onclick=()=>{$('#gameView').classList.remove('open');const f=$('#gameFrame');setTimeout(()=>{f.src='about:blank';f.dataset.g=''},400);renderHome()};
