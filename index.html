@@ -745,6 +745,8 @@ input,textarea,select{font:inherit;color:var(--text)}
         <div class="field"><label>我的名字</label><input data-u="name"></div>
         <div class="field"><label>我的人设</label><textarea data-u="persona"></textarea></div>
         <div class="field"><label>我的外貌（生图用）</label><textarea data-u="look" style="min-height:60px"></textarea></div>
+        <div class="btns"><button class="btn" data-wmx="family-generate">✦ bb 根据我的身份生成几位家人</button></div>
+        <div class="hint">结合我的人设与世界书生成，先看人设，选中后才加入联系人。会使用当前 AI 接口。</div><div id="familyDrafts"></div>
       </div>
       <div class="btns"><button class="btn" id="useFirst">用开场白开始见面</button></div>
     </div>
@@ -2152,6 +2154,7 @@ $('#memNow').onclick=()=>maybeSummarize(curT(),true);
 let charEdit=null;
 function editingChar(){if(charEdit==='me')return null;let c=charById(charEdit);if(!c){c=charById(curT().members[0])||S.chars[0];charEdit=c.id}return c}
 function renderChar(){
+  if(typeof wmFamilyRender==='function')wmFamilyRender();
   const c=editingChar();
   $('#charPick').innerHTML=S.chars.map(x=>`<button data-pick="${x.id}" class="${c&&x.id===c.id?'on':''}">${charAv(x)}<span>${esc(x.name)}</span></button>`).join('')+`<button data-pick="me" class="${!c?'on':''}">${avHTML('user')}<span>我</span></button><button data-pick="new"><div class="av">＋</div><span>新角色</span></button>`;
   $('#charCard').style.display=c?'':'none';$('#meCard').style.display=c?'none':'';$('#charBtns').style.display=c?'':'none';

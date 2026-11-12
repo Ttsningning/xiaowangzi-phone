@@ -160,7 +160,7 @@ function wmInit(){
   if(!w.migrated){wmEntry(w.balance,'迁移期初余额（旧版历史流水不可追溯）',{opening:true});w.migrated=true;}
   homeMigrate();
   if(!S.home.marketApps){const missing=['wallet','market'].filter(app=>!S.home.pages.flat().some(x=>x.app===app));if(missing.length)S.home.pages.push(missing.map(app=>({id:uid(),type:'app',app})));S.home.marketApps=true;save('home');}
-  wmSocialInit();wmTick();save('wallet');save('market');
+  wmSocialInit();wmStallInit();wmFamilyRender();wmTick();save('wallet');save('market');
 }
 function wmWorld(){return (S.world.books||[]).filter(b=>b.enabled).flatMap(b=>b.entries.filter(e=>e.enabled).map(e=>e.content)).join('\n').slice(0,10000)}
 function wmContext(){return `已采用的平台汇率（沿用，不随卖家情绪改变）：${JSON.stringify(S.market.rates||{})}。用户：${S.user.name}；身份：${S.user.persona||'未设定'}；货币：${S.wallet.currency}。世界书：\n${wmWorld()}`}
@@ -224,8 +224,9 @@ function wmRenderMarket(){
   if(wmTab==='orders')body=m.orders.map(o=>wmCard(o.name,`<p>${esc(o.seller)} · ×${o.qty} · ${esc(o.status==='preorder'?'预售中，预计 '+new Date(o.due).toLocaleString()+' 到货':o.status==='fulfilled'?'已完成交付':'已到背包')}</p><small>${esc(o.payment)}</small>${wmSocialOrder(o)}`)).join('')||'<div class="evt">还没有订单</div>';
   else if(wmTab==='feed')body=m.feed.map(x=>wmCard(new Date(x.at).toLocaleString(),`<p>${esc(x.text)}</p>${x.personId?wmFriendButton(x.personId):''}`)).join('')||'<div class="evt">集市还很安静，逛逛新摊位吧。</div>';
   else if(wmTab==='requests')body=wmRenderRequests();
+  else if(wmTab==='stall')body=wmRenderStall();
   else body=m.listings.map(l=>wmCard(l.name,`<div class="wm-tags"><span class="tag">${esc(l.world)}</span><span class="tag">${esc(l.type==='wanted'?'十万火急 · 求购':l.preorder?'预售':l.mood)}</span></div><p>${esc(l.desc)}</p><small>${esc(l.seller)} · ${l.type==='wanted'?'剩余需求':'库存'} ${l.stock} · 已成交 ${l.sold}</small><p>${l.type==='wanted'?`对方愿出 ${esc(wmFmt(l.price))} · 需要「${esc(l.need)}」`:l.need?`以物换物：${esc(l.need)} × ${l.needQty}`:`${esc(wmFmt(l.price))}<small>原价 ${l.originPrice} ${esc(l.currency)} · 1 ${esc(l.currency)} ≈ ${l.rate} ${esc(S.wallet.currency)}<br>平台基准 ${esc(wmFmt(l.base))} · 卖家系数 ${l.markup} 倍</small>`}</p>${wmDealPrice(l)<l.price?`<p class="wm-in">你的议价：${esc(wmFmt(wmDealPrice(l)))} / 件 · 本次订单有效，报价保留至 ${new Date(l.deal.expires).toLocaleTimeString()}</p>`:''}${l.stock?wmBtn('trade',l.type==='wanted'?'交付物品':l.need?'挑选交换物':'购买',`data-id="${l.id}"`):'<span class="tag">已结束</span>'}${wmSocialListing(l)}`)).join('')||'<div class="evt">联系一下商人，看看今天各个世界带来了什么。</div>';
-  B.innerHTML=`<div class="wm-hero"><small>星光中转站 · 各界商人正在营业</small><strong>万界杂货铺</strong><p>零钱 ${esc(wmFmt(S.wallet.balance))} · 信物只换物</p>${wmBtn('refresh',wmBusy?'正在联系商人…':'✦ 逛一批新摊位')}</div><div class="btns">${['listings','orders','feed','requests'].map((k,i)=>wmBtn('tab',['逛摊位','我的订单','交易动态','陌生来信'+(wmRequestsCount()?` (${wmRequestsCount()})`:'')][i],`data-id="${k}"`)).join('')}</div>${body}`;
+  B.innerHTML=`<div class="wm-hero"><small>星光中转站 · 各界商人正在营业</small><strong>万界杂货铺</strong><p>零钱 ${esc(wmFmt(S.wallet.balance))} · 信物只换物</p>${wmBtn('refresh',wmBusy?'正在联系商人…':'✦ 逛一批新摊位')}</div><div class="btns">${['listings','stall','orders','feed','requests'].map((k,i)=>wmBtn('tab',['逛摊位','我的上架','我的订单','交易动态','陌生来信'+(wmRequestsCount()?` (${wmRequestsCount()})`:'')][i],`data-id="${k}" aria-current="${wmTab===k?'page':'false'}"`)).join('')}</div>${body}`;
   B.scrollTop=scroll;
 }
 async function wmRefresh(){if(wmBusy)return;wmBusy=true;wmRenderMarket();try{
@@ -251,4 +252,113 @@ document.addEventListener('click',async e=>{const b=e.target.closest('[data-wm]'
   try{if(a==='income'||a==='fixed')await wmIncome(a==='fixed');if(a==='recommend')await wmRecommend();if(a==='currency'){const r=await formSheet('钱包货币',[{k:'currency',t:'text',l:'货币名称（改名不换算已有金额）'}],{currency:S.wallet.currency});if(r?.currency?.trim()){S.wallet.currency=r.currency.trim().slice(0,20);save('wallet');wmRenderWallet()}}
   if(a==='del-income'){S.wallet.incomes=S.wallet.incomes.filter(x=>x.id!==id);save('wallet');wmRenderWallet()}if(a==='ta-wallet')await wmMakeAccount(id);if(a==='sneak')await wmSneak(id);if(a==='refresh')await wmRefresh();if(a==='tab'){wmTab=id;wmRenderMarket()}if(a==='trade')await wmTrade(id);if(a==='use'||a==='gift')await wmUse(id,a==='gift');
   }catch(err){toast(err.message,5000)}
+});
+
+/* 用户的求购与换物摊位：所有交付必须由用户确认。 */
+function wmStallInit(){
+  const m=S.market;m.stall||={drafts:[],posts:[]};
+  for(const k of ['drafts','posts'])if(!Array.isArray(m.stall[k]))m.stall[k]=[];
+  if(!Array.isArray(S.user.familyDrafts))S.user.familyDrafts=[];
+}
+function wmXBtn(a,label,id=''){return `<button class="btn" data-wmx="${a}" data-id="${esc(id)}"${wmSocialBusy.has(a+':'+id)?' disabled':''}>${esc(label)}</button>`}
+function wmStallTerms(p){return p.mode==='barter'?`用「${p.giveName}」×1 换物`:`我出 ${wmFmt(p.price)}`}
+function wmRenderStall(){
+  const s=S.market.stall;
+  return wmCard('摆一个属于你的摊位',`<p>你出价收物，或拿背包里的物品交换。先发布需求，再看看谁来应单；你点确认后才扣款、交付并收货。</p><div class="btns">${wmXBtn('stall-new','自己写一条')}${wmXBtn('stall-ideas',wmSocialBusy.has('stall-ideas:')?'bb 正在想…':'✦ bb 替你想一想有什么可以上架')}</div><small>每次三条灵感，包含以钱易物与以物易物。生成灵感、联系应单者会使用当前 AI 接口；发布时不扣钱，也不自动成交。</small>`)
+  +(s.drafts.length?wmCard('bb 想到的三样',s.drafts.map(d=>`<div class="wm-item"><b>${esc(d.name)}</b><p>${esc(d.desc)}</p><small>${d.mode==='barter'?'以物易物 · 发布时从背包选择交换物':'以钱易物 · 建议出价 '+esc(wmFmt(d.price))}</small>${wmXBtn('stall-draft','修改并上架',d.id)}</div>`).join('')):'')
+  +s.posts.slice().reverse().map(p=>wmCard(p.name,`<span class="tag">${p.status==='open'?'等待应单':p.status==='completed'?'已成交':'已撤下'}</span><p>${esc(p.desc)}</p><p>${esc(wmStallTerms(p))}</p>${p.status==='open'?`<div class="btns">${wmXBtn('stall-offers',wmSocialBusy.has('stall-offers:'+p.id)?'正在联系…':'看看谁来应单',p.id)}${wmXBtn('stall-close','撤下',p.id)}</div>`:''}${p.offers.map(o=>`<div class="wms-offer"><b>${esc(o.seller)} · ${esc(o.world)}</b><p>带来「${esc(o.name)}」×1<br>${esc(o.desc)}</p><p>${esc(o.message)}</p><small>${esc(wmStallTerms(p))} · ${o.status==='accepted'?'已确认交付':o.status==='declined'?'已婉拒':p.status==='open'?'等待你确认':'应单已结束'}</small>${p.status==='open'&&o.status==='pending'?`<div class="btns">${wmXBtn('stall-confirm','确认交换',o.id)}${wmXBtn('stall-decline','婉拒',o.id)}</div>`:''}${o.personId?wmFriendButton(o.personId):''}</div>`).join('')}`)).join('');
+}
+async function wmStallIdeas(){
+  const lock='stall-ideas:';if(wmSocialBusy.has(lock))return;wmSocialBusy.add(lock);const market=S.market;wmRenderMarket();
+  try{
+    const out=await callAPI([{role:'system',content:'为用户的万界集市求购/换物摊位想三条有趣的收物需求，结合用户身份和世界书，重在生活、冒险与互动，不是赚钱经营。严格只输出 JSON {"ideas":[{"name":"想收的物品","desc":"用途和要求","mode":"cash或barter","price":100}]}。恰好三条，两条cash表示用户出钱收物、一条barter表示用户拿背包物品换对方物品。不能让用户出售物品赚现金，不得声称用户已拥有未提供的物品。cash出价必须为正数，尽量在用户预算内。barter发布时用户自己选背包物品。'},{role:'user',content:wmContext()+'\n钱包余额：'+wmFmt(S.wallet.balance)+'\n背包：'+JSON.stringify(S.wallet.bag.filter(b=>b.qty>0).map(b=>({name:b.name,desc:b.desc,kind:b.kind})))}],{char:charById(curT().members[0]),max_tokens:1800,temperature:1});
+    if(S.market!==market)throw Error('存档已切换，请重新生成');
+    const j=parseJSON(out),items=(Array.isArray(j.ideas)?j.ideas:[]).slice(0,3).map(x=>({id:uid(),name:wmText(x.name,100),desc:wmText(x.desc,1600),mode:x.mode==='barter'?'barter':'cash',price:wmNum(x.price)}));
+    if(items.length!==3||items.some(x=>!x.name||!x.desc||(x.mode==='cash'&&!x.price))||!items.some(x=>x.mode==='barter')||!items.some(x=>x.mode==='cash'))throw Error('灵感不完整，请再让 bb 想一次');
+    market.stall.drafts=items;await save('market');
+  }finally{wmSocialBusy.delete(lock);wmRenderMarket()}
+}
+async function wmStallPost(draftId){
+  const market=S.market,d=market.stall.drafts.find(d=>d.id===draftId)||{};
+  const r=await formSheet('上架求购 / 换物需求',[{k:'name',t:'text',l:'想要对方带来的物品'},{k:'desc',t:'textarea',l:'用途与要求（每条需求收一件，确认后结束）'},{k:'mode',t:'select',l:'我拿什么交换',opts:['我出钱','我出物品']},{k:'price',t:'text',l:`我的出价（${S.wallet.currency}，换物时忽略）`,num:1}],{name:d.name||'',desc:d.desc||'',mode:d.mode==='barter'?'我出物品':'我出钱',price:d.price||''});
+  if(!r||S.market!==market)return;
+  const name=wmText(r.name,100),desc=wmText(r.desc,1600),mode=r.mode==='我出物品'?'barter':'cash',price=wmNum(r.price);
+  if(!name||!desc)throw Error('先写一下想收什么和具体要求');
+  let bag=null;
+  if(mode==='cash'){if(!price||price>S.wallet.balance)throw Error('出价须大于零，且不超过当前余额');}
+  else{
+    const bags=S.wallet.bag.filter(b=>b.qty>=1);if(!bags.length)throw Error('背包里还没有可交换的物品，可以先选以钱易物');
+    const i=await actionSheet(bags.map(b=>({label:b.name+' ×'+b.qty+(b.kind==='token'?' · 信物':'' )})),'拿哪一件换？成交时交付一件');if(i==null||i<0||!bags[i]||S.market!==market)return;bag=bags[i];
+  }
+  if(await actionSheet([{label:'确认上架'},{label:'再想想'}],`${name}\n${mode==='cash'?'我出 '+wmFmt(price):'用「'+bag.name+'」×1 换物'}\n现在不扣款、不交物，收到应单后由你确认。`)!==0||S.market!==market)return;
+  market.stall.posts.push({id:uid(),name,desc,mode,price:mode==='cash'?price:0,giveId:bag?.id||'',giveName:bag?.name||'',status:'open',offers:[],at:Date.now()});
+  await save('market');wmFeed(S.user.name+'上架了收物需求「'+name+'」，等待各界旅人应单。');wmRenderMarket();toast('上架啦，等别人带物品来应单 ✦');
+}
+async function wmStallOffers(id){
+  const market=S.market,p=market.stall.posts.find(p=>p.id===id),lock='stall-offers:'+id;if(!p||p.status!=='open'||wmSocialBusy.has(lock))return;
+  if(p.offers.filter(o=>o.status==='pending').length>=6)return toast('先看看已有的应单，确认或婉拒后再联系新人');
+  wmSocialBusy.add(lock);wmRenderMarket();
+  try{
+    const out=await callAPI([{role:'system',content:'你是万界集市应单者生成器。用户发布了收物需求，由用户付钱或交出指定物品，你生成1—3位带着物品来的虚构成年应单者。只输出 JSON {"offers":[{"seller":"姓名","world":"来源世界","name":"交付物品名","desc":"具体品质、来历和限制","message":"对用户说的话"}]}。每人交付一件，必须符合需求，接受用户既定出价或换物条件。不代用户确认、不扣款、不声称已成交。与已有应单者区分。'},{role:'user',content:wmContext()+'\n用户需求：'+JSON.stringify({name:p.name,desc:p.desc,terms:wmStallTerms(p)})+'\n已有应单：'+JSON.stringify(p.offers.map(o=>({seller:o.seller,name:o.name})))}],{char:charById(curT().members[0]),max_tokens:2200,temperature:1});
+    if(S.market!==market||p.status!=='open')return;
+    const j=parseJSON(out),offers=(Array.isArray(j.offers)?j.offers:[]).slice(0,3).map(x=>({id:uid(),seller:wmText(x.seller,80),world:wmText(x.world,80)||'异世界',name:wmText(x.name,100),desc:wmText(x.desc,2000),message:wmText(x.message,1000),status:'pending'})).filter(x=>x.seller&&x.name&&x.desc);
+    if(!offers.length)throw Error('暂时没有有效的应单，稍后再来看看');
+    for(const o of offers)o.personId=wmPerson(o.seller,'seller',o.world,p.id,o.desc).id;
+    p.offers.push(...offers);await save('market');toast('有人带着物品来应单啦，看看合不合心意 ✦');
+  }finally{wmSocialBusy.delete(lock);wmRenderMarket()}
+}
+async function wmStallConfirm(offerId){
+  const market=S.market,p=market.stall.posts.find(p=>p.offers.some(o=>o.id===offerId)),o=p?.offers.find(o=>o.id===offerId),lock='stall-confirm:'+offerId;
+  if(!p||p.status!=='open'||o.status!=='pending'||wmSocialBusy.has(lock))return;
+  wmSocialBusy.add(lock);
+  try{
+    if(await actionSheet([{label:'确认成交'},{label:'再看看'}],`收下 ${o.seller} 的「${o.name}」×1\n${wmStallTerms(p)}\n${o.desc}`)!==0)return;
+    if(S.market!==market||p.status!=='open'||o.status!=='pending')return;
+    const bag=S.wallet.bag.find(b=>b.id===p.giveId);
+    if(p.mode==='cash'){if(!Number.isFinite(p.price)||p.price<=0||p.price>S.wallet.balance)throw Error('当前余额不足，未扣款也未成交');wmMoney(-p.price,'集市收物 · '+o.name);}
+    else{if(!bag||bag.qty<1)throw Error('交换物已不在背包里，这笔交易尚未成交');bag.qty--;}
+    S.wallet.bag.push({id:uid(),name:o.name,desc:o.desc,kind:'goods',qty:1,from:o.seller,at:Date.now()});
+    o.status='accepted';p.status='completed';p.completedAt=Date.now();for(const other of p.offers)if(other.status==='pending')other.status='closed';
+    const order={id:uid(),name:o.name,desc:o.desc,seller:o.seller,qty:1,at:Date.now(),payment:wmStallTerms(p),status:'delivered',stallId:p.id,encounterChecked:true};market.orders.unshift(order);
+    wmFeed(S.user.name+'确认了 '+o.seller+' 的应单，收下「'+o.name+'」。',{personId:o.personId});await Promise.all([save('wallet'),save('market')]);toast('成交啦，物品已放进背包 ✦');
+  }finally{wmSocialBusy.delete(lock);wmRenderMarket()}
+}
+
+/* 家人人设先保存为草稿；用户逐个选择加入联系人。 */
+function wmFamilyRender(){
+  const el=$('#familyDrafts');if(!el)return;
+  const drafts=S.user.familyDrafts||[];
+  el.innerHTML=drafts.map(p=>{const c=S.chars.find(c=>c.familyMemberId===p.id);return `<div class="wms-profile"><b>${esc(p.relation)} · ${esc(p.name)}</b><p>${esc(p.description)}</p><details><summary>看看完整人设</summary><p>性格：${esc(p.personality)}\n相处背景：${esc(p.scenario)}\n开场白：${esc(p.first_mes)}\n外貌：${esc(p.look)}</p></details>${c?wmXBtn('family-chat','和 TA 聊聊',c.id):wmXBtn('family-add','将这位家人加入联系人',p.id)}</div>`}).join('');
+  const b=$('[data-wmx="family-generate"]');if(b){b.disabled=wmSocialBusy.has('family-generate:');b.textContent=b.disabled?'bb 正在想家人的故事…':'✦ bb 根据我的身份生成几位家人'}
+}
+async function wmFamilyGenerate(){
+  const lock='family-generate:';if(wmSocialBusy.has(lock))return;readCharForm();
+  if(!S.user.persona?.trim())return toast('先在「我的人设」写下身份或家庭背景，bb 才能顺着你的故事来想');
+  const user=S.user,persona=user.persona;wmSocialBusy.add(lock);wmFamilyRender();
+  try{
+    const existing=S.chars.filter(c=>c.familyMemberId).map(c=>({name:c.name,relation:c.familyRelation,description:c.description}));
+    const out=await callAPI([{role:'system',content:'根据用户身份、世界书和已知家人，生成三位适合长期互动的虚构成年家人。严格尊重用户既有家庭事实、物种、世界与时代；家人之间年龄辈分和经历一致。人设未说明的部分作为可选补充，不改写既有事实；孤儿或无血亲背景可生成收养、义亲等关系。不要强行加入配偶或子女，不与已加入的家人重复。只输出 JSON {"family":[{"name":"姓名","relation":"与用户的亲属关系","description":"成年身份、年龄、经历、关系细节","personality":"性格","scenario":"与用户的家庭背景与当下相处","first_mes":"以此亲属口吻发来的第一句话","look":"成年外貌","mes_example":"对话示例"}]}。不代用户行动，不默认恋爱。'},{role:'user',content:wmContext()+'\n已经加入的家人：'+JSON.stringify(existing)}],{char:charById(curT().members[0]),max_tokens:3500,temperature:.95});
+    if(S.user!==user||user.persona!==persona)throw Error('身份或存档已改变，请按新身份重新生成');
+    const j=parseJSON(out),items=(Array.isArray(j.family)?j.family:[]).slice(0,3).map(x=>({id:'fam'+uid(),name:wmText(x.name,60),relation:wmText(x.relation,80),description:wmText(x.description,5000),personality:wmText(x.personality,2500),scenario:wmText(x.scenario,4000),first_mes:wmText(x.first_mes,2000),look:wmText(x.look,2000),mes_example:wmText(x.mes_example,2500)}));
+    if(items.length!==3||items.some(x=>!x.name||!x.relation||!x.description||!x.personality||!x.scenario||!x.first_mes))throw Error('家人资料不完整，请再生成一次');
+    if(new Set(items.map(x=>x.name)).size!==3||items.some(x=>existing.some(c=>c.name===x.name)))throw Error('家人姓名重复，请再生成一次');
+    user.familyDrafts=items;await save('user');toast('三位家人的人设写好啦，挑喜欢的加入联系人');
+  }finally{wmSocialBusy.delete(lock);wmFamilyRender()}
+}
+async function wmFamilyAdd(id){
+  const p=S.user.familyDrafts?.find(p=>p.id===id),lock='family-add:'+id;if(!p||wmSocialBusy.has(lock))return;
+  wmSocialBusy.add(lock);
+  try{
+    let c=S.chars.find(c=>c.familyMemberId===id);if(!c){const {relation,...profile}=p;c={...profile,id:'c'+uid(),avatar:'',voice:'',familyMemberId:id,familyRelation:relation,description:`与 ${S.user.name} 的关系：${relation}\n${p.description}`};S.chars.push(c);await saveChars();}
+    const T=threadOf(c.id);if(!T.msgs.length)pushMsg(T,'online','assistant',c.first_mes,{who:c.id});syncUnread();updateBadges();toast('「'+c.name+'」已加入联系人，人设可以继续编辑');
+  }finally{wmSocialBusy.delete(lock);wmFamilyRender()}
+}
+document.addEventListener('click',async e=>{
+  const b=e.target.closest('[data-wmx]');if(!b||b.disabled)return;const a=b.dataset.wmx,id=b.dataset.id||'';
+  try{
+    if(a==='stall-ideas')await wmStallIdeas();if(a==='stall-new'||a==='stall-draft')await wmStallPost(id);if(a==='stall-offers')await wmStallOffers(id);if(a==='stall-confirm')await wmStallConfirm(id);
+    if(a==='stall-close'){const p=S.market.stall.posts.find(p=>p.id===id);if(p?.status==='open'&&await actionSheet([{label:'确认撤下'},{label:'继续挂着'}],'撤下这条需求？')===0){p.status='cancelled';await save('market');wmRenderMarket()}}
+    if(a==='stall-decline'){for(const p of S.market.stall.posts){const o=p.offers.find(o=>o.id===id);if(p.status==='open'&&o?.status==='pending')o.status='declined'}await save('market');wmRenderMarket()}
+    if(a==='family-generate')await wmFamilyGenerate();if(a==='family-add')await wmFamilyAdd(id);if(a==='family-chat'&&charById(id))openThread(threadOf(id).id);
+  }catch(err){toast('这次没完成：'+err.message,5000)}
 });
