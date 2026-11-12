@@ -1048,7 +1048,8 @@ const DEFAULT_HOME=()=>[
   {id:uid(),type:'w',kind:'ta',w:2,h:2},
   {id:uid(),type:'w',kind:'days',w:2,h:2},
   {id:uid(),type:'app',app:'char'},{id:uid(),type:'app',app:'world'},{id:uid(),type:'app',app:'preset'},{id:uid(),type:'app',app:'theme'},{id:uid(),type:'app',app:'games'},
-  {id:uid(),type:'w',kind:'dice',w:1,h:1}];
+  {id:uid(),type:'w',kind:'dice',w:1,h:1},
+  {id:uid(),type:'app',app:'peek'},{id:uid(),type:'app',app:'shop'},{id:uid(),type:'app',app:'food'}];
 const dayKey=()=>new Date().toDateString();
 const fmtHM=d=>d.toTimeString().slice(0,5), fmtMD=d=>`${d.getMonth()+1}月${d.getDate()}日 星期${'日一二三四五六'[d.getDay()]}`;
 function daysTogether(){const f=S.messages[0]?.ts;return f?Math.floor((Date.now()-new Date(new Date(f).toDateString()))/864e5)+1:0}
@@ -1246,6 +1247,11 @@ function homeMigrate(){
   H.pages=H.pages.map(p=>p.filter(it=>it.type==='app'?appById(it.app)&&!DOCK.includes(it.app):WG[it.kind]));
   for(const a of APPS)if(!H.known.includes(a.id)){H.known.push(a.id);dirty=true;if(!DOCK.includes(a.id)&&!H.pages.flat().some(i=>i.type==='app'&&i.app===a.id))H.pages[H.pages.length-1].push({id:uid(),type:'app',app:a.id})}
   if(!H.pages.length)H.pages=[[]];
+  // Restore these shortcuts once for existing desktops, without resetting their layout.
+  if(!H.desktopAppsV1){
+    for(const app of ['peek','shop','food'])if(!H.pages.flat().some(it=>it.type==='app'&&it.app===app))H.pages.at(-1).push({id:uid(),type:'app',app});
+    H.desktopAppsV1=true;dirty=true;
+  }
   if(dirty)save('home');
 }
 const MET={R:6};
