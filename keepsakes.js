@@ -1,6 +1,12 @@
 /* 角色记忆册与统一相册。数据随小手机备份，不改写已有聊天。 */
 DEFAULTS.keepsakes={books:{}};
 DEFAULTS.album={photos:[],hidden:[]};
+// Register shortcuts before load()/homeMigrate() can filter a saved desktop.
+if(!APPS.some(a=>a.id==='album'))APPS.push({id:'album',name:'相册'});
+PACKS.prince.icons.album='themes/prince/ui/photo.webp';
+PACKS.prince.icons.memory='themes/prince/deco/i-book.webp';
+SVG.album='<svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/><path d="m4 19 6-6 4 3 3-5 4 5"/></svg>';
+
 const KS_ASSET='themes/prince/keepsakes/';
 const KS_RECTS={album:[0,10,385,385],book:[390,8,370,390],cover:[776,20,365,365],fox:[1150,10,385,385],camera:[800,880,145,130],envelope:[1143,404,240,175],divider:[614,735,902,90],bookmark:[326,405,130,315]};
 const ksBusy=new Set(),ksCommentDrafts=new Map();let ksMemoryChar=null,ksMemoryFilter='all',ksAlbumChar='all',ksPhotoId=null;
@@ -14,8 +20,7 @@ function ksOpenMemory(cid){ksMemoryChar=cid||curT().members[0];openApp('memory')
 function ksOpenAlbum(cid='all',id=null){ksAlbumChar=cid;ksPhotoId=id;openApp('album')}
 function ksInit(){
   S.keepsakes||={books:{}};S.keepsakes.books||={};S.album||={photos:[],hidden:[]};S.album.photos||=[];S.album.hidden||=[];
-  if(!APPS.some(a=>a.id==='album'))APPS.push({id:'album',name:'相册'});
-  if(!S.home.keepsakesApps){const page=S.home.pages.at(-1);if(!S.home.pages.flat().some(x=>x.app==='album'))page.push({id:uid(),type:'app',app:'album'});S.home.keepsakesApps=true;save('home')}
+  if(!S.home.albumDesktopV2){if(!S.home.pages.flat().some(x=>x.type==='app'&&x.app==='album'))S.home.pages.at(-1).push({id:uid(),type:'app',app:'album'});S.home.keepsakesApps=true;S.home.albumDesktopV2=true;save('home')}
   if(!$('#app-album')){const el=document.createElement('section');el.className='app ks-app';el.id='app-album';el.innerHTML='<header><button class="hbtn" data-back>‹ 返回</button><div class="title">星光相册</div><button class="hbtn" data-ks="album-home">名册</button></header><div class="body pad" id="albumBody"></div>';$('#phone').append(el)}
   $('#app-memory').classList.add('ks-app');RENDER.album=ksRenderAlbum;renderMemory=ksRenderMemory;RENDER.memory=ksRenderMemory;
   if(!PACKS.prince.walls.includes(KS_ASSET+'rose-planet.jpg'))PACKS.prince.walls.push(...['fox-moon.jpg','rose-planet.jpg','rose-clouds.jpg'].map(x=>KS_ASSET+x));
