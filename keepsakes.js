@@ -11,7 +11,7 @@ const KS_ASSET='themes/prince/keepsakes/';
 const KS_RECTS={album:[0,10,385,385],book:[390,8,370,390],cover:[776,20,365,365],fox:[1150,10,385,385],camera:[800,880,145,130],envelope:[1143,404,240,175],divider:[614,735,902,90],bookmark:[326,405,130,315]};
 const ksBusy=new Set(),ksCommentDrafts=new Map();let ksMemoryChar=null,ksMemoryFilter='all',ksAlbumChar='all',ksPhotoId=null;
 const KS_KINDS={about:'关于我们',event:'共同经历',gift:'礼物与信物',promise:'重要约定'};
-function ksSprite(kind,size=80){const [x,y,w,h]=KS_RECTS[kind]||KS_RECTS.book;return `<span class="ks-sprite ks-${kind}" style="width:${size}px;aspect-ratio:${w}/${h}" aria-hidden="true"><img src="${KS_ASSET}materials.jpg" alt="" style="width:${1536/w*100}%;left:${-x/w*100}%;top:${-y/h*100}%"></span>`}
+function ksSprite(kind,size=80){const transparent={book:['themes/prince/deco/i-book.webp',165,156],album:['themes/prince/ui/photo.webp',187,220]};if(transparent[kind]){const [src,w,h]=transparent[kind];return `<span class="ks-sprite ks-transparent ks-${kind}" style="width:${size}px;aspect-ratio:${w}/${h}" aria-hidden="true"><img src="${src}" alt=""></span>`}const [x,y,w,h]=KS_RECTS[kind]||KS_RECTS.book;return `<span class="ks-sprite ks-${kind}" style="width:${size}px;aspect-ratio:${w}/${h}" aria-hidden="true"><img src="${KS_ASSET}materials.jpg" alt="" style="width:${1536/w*100}%;left:${-x/w*100}%;top:${-y/h*100}%"></span>`}
 function ksBtn(action,label,id='',extra=''){return `<button class="btn" data-ks="${action}" data-id="${esc(id)}" ${extra}>${esc(label)}</button>`}
 function ksBook(cid){return S.keepsakes.books[cid]||(S.keepsakes.books[cid]={cards:[]})}
 function ksDate(ts){return new Date(ts).toLocaleDateString()}

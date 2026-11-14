@@ -8,6 +8,9 @@ const w=dom.window,ev=x=>w.eval(x),check=(label,source)=>{assert.ok(ev(source),l
 (async()=>{
  await new Promise(r=>setTimeout(r,1000));
  check('keepsakes and album boot with one desktop icon','!!S.keepsakes.books&&!!S.album.photos&&S.home.pages.flat().filter(x=>x.app==="album").length===1');
+ ev('ksMemoryChar=curT().members[0];ksRenderMemory()');
+ check('memory heading and empty state use actual alpha images','document.querySelectorAll("#app-memory .ks-book.ks-transparent img").length===2');
+ ev('ksRenderAlbum()');check('album heading uses actual alpha image','!!document.querySelector("#albumBody .ks-album.ks-transparent img")');
  ev('wmInit();wmInit()');check('repeated migration never duplicates desktop app','S.home.pages.flat().filter(x=>x.app==="album").length===1');
  ev(`var T=curT(),cid=T.members[0];ksMemoryChar=cid;ksMemoryFilter='all';var source=pushMsg(T,'online','assistant','我把月光灯送给你了。');var source2=pushMsg(T,'offline','user','我们约好明晚看星星。');`);
  const cards=ev(`({cards:[{title:'月光灯',kind:'gift',text:'TA 送给用户一盏月光灯。',sourceTid:T.id,sourceMsgIds:[source.id]},{title:'明晚的约定',kind:'promise',text:'约好明晚看星星。',sourceTid:T.id,sourceMsgIds:[source2.id]}]})`);
