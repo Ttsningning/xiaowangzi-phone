@@ -1,42 +1,158 @@
 {
   "idle": {
     "frames": 4,
-    "file": "idle.webp"
+    "right": [
+      "idle/right-00.png",
+      "idle/right-01.png",
+      "idle/right-02.png",
+      "idle/right-03.png"
+    ],
+    "left": [
+      "idle/left-00.png",
+      "idle/left-01.png",
+      "idle/left-02.png",
+      "idle/left-03.png"
+    ]
   },
   "walk": {
     "frames": 6,
-    "file": "walk.webp"
+    "right": [
+      "walk/right-00.png",
+      "walk/right-01.png",
+      "walk/right-02.png",
+      "walk/right-03.png",
+      "walk/right-04.png",
+      "walk/right-05.png"
+    ],
+    "left": [
+      "walk/left-00.png",
+      "walk/left-01.png",
+      "walk/left-02.png",
+      "walk/left-03.png",
+      "walk/left-04.png",
+      "walk/left-05.png"
+    ]
   },
   "climb": {
     "frames": 6,
-    "file": "climb.webp"
+    "right": [
+      "climb/right-00.png",
+      "climb/right-01.png",
+      "climb/right-02.png",
+      "climb/right-03.png",
+      "climb/right-04.png",
+      "climb/right-05.png"
+    ],
+    "left": [
+      "climb/left-00.png",
+      "climb/left-01.png",
+      "climb/left-02.png",
+      "climb/left-03.png",
+      "climb/left-04.png",
+      "climb/left-05.png"
+    ]
   },
   "hang": {
     "frames": 2,
-    "file": "hang.webp"
+    "right": [
+      "hang/right-00.png",
+      "hang/right-01.png"
+    ],
+    "left": [
+      "hang/left-00.png",
+      "hang/left-01.png"
+    ]
   },
   "mount": {
     "frames": 6,
-    "file": "mount.webp"
+    "right": [
+      "mount/right-00.png",
+      "mount/right-01.png",
+      "mount/right-02.png",
+      "mount/right-03.png",
+      "mount/right-04.png",
+      "mount/right-05.png"
+    ],
+    "left": [
+      "mount/left-00.png",
+      "mount/left-01.png",
+      "mount/left-02.png",
+      "mount/left-03.png",
+      "mount/left-04.png",
+      "mount/left-05.png"
+    ]
   },
   "happy": {
     "frames": 4,
-    "file": "happy.webp"
+    "right": [
+      "happy/right-00.png",
+      "happy/right-01.png",
+      "happy/right-02.png",
+      "happy/right-03.png"
+    ],
+    "left": [
+      "happy/left-00.png",
+      "happy/left-01.png",
+      "happy/left-02.png",
+      "happy/left-03.png"
+    ]
   },
   "jump": {
     "frames": 5,
-    "file": "jump.webp"
+    "right": [
+      "jump/right-00.png",
+      "jump/right-01.png",
+      "jump/right-02.png",
+      "jump/right-03.png",
+      "jump/right-04.png"
+    ],
+    "left": [
+      "jump/left-00.png",
+      "jump/left-01.png",
+      "jump/left-02.png",
+      "jump/left-03.png",
+      "jump/left-04.png"
+    ]
   },
   "held": {
     "frames": 3,
-    "file": "held.webp"
+    "right": [
+      "held/right-00.png",
+      "held/right-01.png",
+      "held/right-02.png"
+    ],
+    "left": [
+      "held/left-00.png",
+      "held/left-01.png",
+      "held/left-02.png"
+    ]
   },
   "fail": {
     "frames": 6,
-    "file": "fail.webp"
+    "right": [
+      "fail/right-00.png",
+      "fail/right-01.png",
+      "fail/right-02.png",
+      "fail/right-03.png",
+      "fail/right-04.png",
+      "fail/right-05.png"
+    ],
+    "left": [
+      "fail/left-00.png",
+      "fail/left-01.png",
+      "fail/left-02.png",
+      "fail/left-03.png",
+      "fail/left-04.png",
+      "fail/left-05.png"
+    ]
   },
   "rest": {
     "frames": 1,
-    "file": "rest.webp"
+    "right": [
+      "rest/right-00.png"
+    ],
+    "left": [
+      "rest/left-00.png"
+    ]
   }
 }
