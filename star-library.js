@@ -26,8 +26,16 @@ function starRender(){
   }
   const ch=b.chapters[b.chapter||0]||null;
   root.innerHTML='<div class="card glass"><div class="btns"><button class="btn" data-star="back">‹ 书架</button><button class="btn" data-star="export">导出 TXT</button><button class="btn" data-star="exportJSON">备份作品</button><button class="btn" data-star="delete">删除作品</button></div><h2>'+starEsc(b.title)+'</h2><div class="field"><label>写作或共读搭档</label><select id="starPartner">'+starOptions()+'</select></div><div class="btns"><button class="btn" data-star="tab" data-tab="outline">一起构思</button><button class="btn" data-star="tab" data-tab="read">一起读</button></div></div>'+
-    (b.tab==='read'?starReadHTML(b,ch):starOutlineHTML(b));
+    (b.tab==='read'?starReadHTML(b,ch):starModeHTML(b)+starOutlineHTML(b));
+  const mode=$('#starWriteMode');if(mode)mode.value=b.writeMode||'outline';
   $('#starPartner').value=lib.partner||'';
+}
+function starModeHTML(b){
+ const mode=b.writeMode||'outline';
+ return '<div class="card glass"><h3>一起写 · 创作模式</h3><div class="field"><label>选择创作方式（可随时切换）</label><select id="starWriteMode"><option value="relay">接力创作 · 一人一段</option><option value="outline">大纲协作 · 一起构思</option><option value="director">导演模式 · 指挥剧情</option></select></div>'+
+ (mode==='relay'?'<div class="field"><label>我的接力段落</label><textarea id="starRelayText" rows="5" placeholder="先写下你的这一段…"></textarea></div><button class="btn pri" data-star="relay">让搭档接着写</button>':
+ mode==='director'?'<div class="field"><label>剧情导演指令</label><textarea id="starDirectorText" rows="5" placeholder="下一段发生什么？由你决定…"></textarea></div><button class="btn pri" data-star="direct">按我的指令写</button>':
+ '<p class="hint">一起规划世界观、人物与章节，再开始正文。</p>')+'</div>';
 }
 function starOutlineHTML(b){
   return '<div class="card glass"><h3>故事设定与章节大纲</h3><div class="field"><label>世界观、人物、冲突与故事方向</label><textarea id="starNotes" rows="6">'+starEsc(b.notes||'')+'</textarea></div><div class="btns"><button class="btn pri" data-star="brainstorm">和搭档一起构思</button><button class="btn" data-star="chapter">新增章节</button></div><p class="hint">AI 只提供构思建议；确认后才写入大纲。不会覆盖你原有的内容。</p><div class="field"><label>讨论与构思草稿</label><textarea id="starIdeas" rows="6">'+starEsc(b.ideas||'')+'</textarea></div></div>'+
@@ -72,6 +80,20 @@ async function starAction(action,el){
   if(action==='chapter'){b.chapters.push({title:'第'+(b.chapters.length+1)+'章',text:''});b.chapter=b.chapters.length-1;await starSave();starEditChapter(b.chapter);return}
   if(action==='edit'){starEditChapter(+el.dataset.index);return}
   if(action==='readChapter'){b.chapter=+el.dataset.index;b.tab='read';await starSave();starRender();return}
+  if(action==='relay'||action==='direct'){
+    const i=b.chapter||0,c=b.chapters[i];
+    if(!c)return toast('请先新增一个章节，再开始创作');
+    const raw=action==='relay'?$('#starRelayText')?.value:$('#starDirectorText')?.value;
+    const instruction=(raw||'').trim();if(!instruction)return toast('先写下你的段落或剧情指令');
+    el.disabled=true;
+    try{
+      const sys=action==='relay'?'你是双人小说接力搭档。用户提供了自己的段落，请紧接着写下一段，延续人物、语气和情节。':'你是小说写作搭档。用户是导演，严格根据用户给出的剧情指令写成小说正文。';
+      const draft=await starAI([{role:'system',content:starContext()+'\\n'+sys+'不要擅自修改已有正文，只返回新的小说段落。'},{role:'user',content:'书名：'+b.title+'\\n设定：'+(b.notes||'')+'\\n章节：'+c.title+'\\n已有正文末尾：'+(c.text||'').slice(-4500)+'\\n'+(action==='relay'?'用户新写的段落：':'导演指令：')+instruction}],1500);
+      const combined=action==='relay'?instruction+'\\n\\n'+draft:draft;
+      const result=await formSheet('确认写入章节',[{k:'draft',t:'textarea',l:'可编辑的待审核内容'}],{draft:combined},{hint:'可以编辑内容；取消则不会修改正文。'});
+      if(result&&starBook()===b&&b.chapters[i]===c){starSnapshot(b,c,action==='relay'?'接力创作前':'导演模式前');c.text=(c.text?c.text+'\\n\\n':'')+result.draft;await starSave();starRender();toast('已保存到章节')}
+    }catch(e){toast(e.message,6000)}finally{el.disabled=false}return;
+  }
   if(action==='draft'){
     const i=+el.dataset.index,c=b.chapters[i];if(!c)return;
     el.disabled=true;toast('正在写章节草稿…',12000);
@@ -104,6 +126,7 @@ async function starEditChapter(i){
 }
 document.addEventListener('click',e=>{const el=e.target.closest('[data-star]');if(el)starAction(el.dataset.star,el).catch(err=>toast(err.message,5000))});
 document.addEventListener('change',async e=>{
+  if(e.target.id==='starWriteMode'){const b=starBook();if(b){b.writeMode=e.target.value;await starSave();starRender()}return}
   if(e.target.id==='starPartner'){S.starLibrary.partner=e.target.value;await starSave()}
   if(e.target.id==='starChapter'){const b=starBook();if(b){b.chapter=+e.target.value;await starSave();starRender()}}
   if(e.target.id==='starBackupFile'){
