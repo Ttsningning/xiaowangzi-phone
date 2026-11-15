@@ -14,6 +14,7 @@
 <link rel="icon" href="icon.png">
 <title>小王子小手机</title>
 <link rel="stylesheet" href="world-market.css">
+<link rel="stylesheet" href="treasure.css">
 <style>
 :root{
   --wglass:rgba(10,28,62,.32);--appbg:rgba(7,17,35,.78);--hdbg:rgba(8,20,42,.55);--inbg:rgba(8,20,42,.7);--sheetbg:rgba(20,36,66,.94);
@@ -2506,6 +2507,7 @@ function checkOrders(){
       generate(T,'online',`你刚刚收到了${S.user.name}${o.kind==='food'?'点的外卖':'买的东西'}：「${o.name}」，已经送到你手上了。用符合性格的方式发消息给${S.user.name}，可以说说感受、吃/用了之后怎样，愿意的话拍张照片 [照片:…] 发过去。`,{pro:true})}
     else if(o.dir==='in'){const c=charById(o.cid);toast(`${c?.name||'TA'}给你的「${o.name}」送到啦`,4000);const T=threadOf(o.cid);if(T){T.msgs.forEach(m=>{if(m.data?.oid===o.id)m.data.status='delivered'});saveMsgs(T)}}
     else toast(`你的「${o.name}」送到啦`,3500)}
+  if(typeof treasureSyncOrders==='function'){treasureSyncOrders();if($('#app-treasure')?.classList.contains('open'))treasureRender()}
   if(ch){save('orders');if($('#app-chat').classList.contains('open'))renderChat()}
 }
 setInterval(checkOrders,20e3);setTimeout(checkOrders,4000);
@@ -2757,6 +2759,8 @@ function underColor(){
 // 独立试用版不注册 Service Worker，避免与正式版缓存交叉。
 </script>
 <script src="world-market.js"></script>
+<script src="market-trades.js"></script>
+<script src="treasure.js"></script>
 <script src="keepsakes.js"></script>
 <script src="companion.js"></script>
 <script>

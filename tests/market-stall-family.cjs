@@ -3,7 +3,7 @@ const {JSDOM,VirtualConsole}=require('jsdom'),{indexedDB}=require('fake-indexedd
 const root=path.resolve(__dirname,'..');
 const html=fs.readFileSync(path.join(root,'index.html'),'utf8').replace('<script src="world-market.js"></script>',()=>'<script>'+fs.readFileSync(path.join(root,'world-market.js'),'utf8')+'</script>');
 const errors=[],vc=new VirtualConsole();vc.on('jsdomError',e=>{if(!/Not implemented/.test(e.message))errors.push(e.message)});
-const dom=new JSDOM(html,{url:'https://example.test/',runScripts:'dangerously',virtualConsole:vc,pretendToBeVisual:true,beforeParse(w){w.structuredClone=structuredClone;w.indexedDB=indexedDB;w.matchMedia=()=>({matches:false});w.HTMLElement.prototype.scrollTo=function(){};w.HTMLElement.prototype.scrollIntoView=function(){};w.fetch=async()=>{throw Error('No paid APIs in tests')};}});
+const dom=new JSDOM(html.replace('<script src="market-trades.js"></script>',()=>'<script>'+fs.readFileSync(require('node:path').join(root,'market-trades.js'),'utf8')+'</script>').replace('<script src="treasure.js"></script>',()=>'<script>'+fs.readFileSync(require('node:path').join(root,'treasure.js'),'utf8')+'</script>'),{url:'https://example.test/',runScripts:'dangerously',virtualConsole:vc,pretendToBeVisual:true,beforeParse(w){w.structuredClone=structuredClone;w.indexedDB=indexedDB;w.matchMedia=()=>({matches:false});w.HTMLElement.prototype.scrollTo=function(){};w.HTMLElement.prototype.scrollIntoView=function(){};w.fetch=async()=>{throw Error('No paid APIs in tests')};}});
 const w=dom.window,ev=x=>w.eval(x),check=(label,source)=>{assert.ok(ev(source),label);console.log('PASS',label)};
 (async()=>{
  await new Promise(r=>setTimeout(r,1000));
