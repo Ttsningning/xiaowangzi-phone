@@ -42,7 +42,7 @@ const profile={name:'艾尔文',description:'成年精灵剑圣，王庭守卫�
  await ev('wmTrade("portrait")');assert.equal(ev('S.wallet.balance'),balance-80);
  check('purchase uses deal once and validates stock','S.market.listings[0].stock===0&&!S.market.listings[0].deal');
  // Network failure must preserve the user's submitted words.
- ev('wmRenderMarket();document.querySelector("[data-wms-input=portrait]").value="可以问问他的名字吗？";callAPI=async()=>{throw Error("offline")}');
+ ev('wmView.status="sold";wmRenderMarket();document.querySelector("[data-wms-input=portrait]").value="可以问问他的名字吗？";callAPI=async()=>{throw Error("offline")}');
  await assert.rejects(ev('wmSocialTalk("portrait",true)'),/offline/);
  check('failed AI reply does not erase user comment','wmCommentThread("portrait").comments.at(-1).text==="可以问问他的名字吗？"');
  // Invalid model offers cannot undercut the floor or produce money.

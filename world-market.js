@@ -218,6 +218,55 @@ function wmTick(now=Date.now()){
   if(!m.lastTick)m.lastTick=now;
   wmSocialTick(now);save('wallet');save('market');
 }
+const WM_CATEGORIES=[['all','全部分类'],['fashion','衣饰珠宝'],['food','食物饮品'],['home','家居日用'],['materials','奇珍材料'],['stories','留影书信'],['other','其他好物']];
+const WM_ART='themes/prince/market/';
+const wmView={status:'available',category:'all',recentLimit:12,oldLimit:12,history:false,menu:false};
+function wmCategory(l){
+ if(WM_CATEGORIES.slice(1).some(([k])=>k===l.category))return l.category;
+ const t=String(l.name||'')+' '+String(l.need||'')+' '+String(l.desc||'');
+ for(const [k,re] of [['stories',/留影|肖像|照片|书信|明信片|日记|信件|手札|情书/],['fashion',/项链|戒指|耳环|珠宝|琉璃珠|胸针|手镯|衣裙|长裙|礼服|围巾|披风|发簪|发饰|靴|帽子/],['food',/食物|面包|蛋糕|饼干|果酱|蜂蜜|糖果|咖啡|饮品|饮料|果汁|红茶|奶茶|美酒|烤肉|水果/],['home',/家具|桌椅|台灯|灯具|杯子|茶具|餐具|靠垫|地毯|床单|被子|香薰|收纳|花瓶/],['materials',/水晶|矿石|魔石|晶石|药材|草药|材料|龙鳞|羽毛|星砂|魔法|魔力|符文|炼金/]])if(re.test(t))return k;
+ return 'other';
+}
+function wmCategoryLabel(l){return WM_CATEGORIES.find(([k])=>k===wmCategory(l))[1];}
+function wmListingAt(l){const n=Number(l.at);return Number.isFinite(n)&&n>0?n:0;}
+function wmOld(l,now=Date.now()){return wmListingAt(l)>0&&wmListingAt(l)<=now-3*WM_DAY;}
+function wmEmpty(text,art='empty'){return `<div class="wm-empty"><img src="${WM_ART+art}.webp" alt=""><p>${esc(text)}</p></div>`;}
+function wmListingGroups(){
+ const all=[...S.market.listings].sort((a,b)=>wmListingAt(b)-wmListingAt(a)),now=Date.now();
+ const matches=l=>(wmView.status==='all'||(wmView.status==='available'?+l.stock>0:+l.stock<=0))&&(wmView.category==='all'||wmCategory(l)===wmView.category);
+ const old=all.filter(l=>wmOld(l,now));return {recent:all.filter(l=>!wmOld(l,now)&&matches(l)),old:old.filter(matches),oldTotal:old.length,oldAvailable:old.filter(l=>+l.stock>0).length};
+}
+function wmBrowse(){
+ const g=wmListingGroups(),counts={available:0,sold:0};for(const l of S.market.listings)counts[+l.stock>0?'available':'sold']++;
+ const filters=`<div class="wm-filters"><div class="wm-status" role="group" aria-label="商品状态">${[['available','在售'],['sold','已售罄'],['all','全部']].map(([k,t])=>wmBtn('status',`${t} <small>${k==='all'?S.market.listings.length:counts[k]}</small>`,`data-id="${k}" aria-pressed="${wmView.status===k}"`)).join('')}</div><label class="wm-category-label">智能分类<select id="wmCategoryFilter" aria-label="商品分类">${WM_CATEGORIES.map(([k,t])=>`<option value="${k}" ${wmView.category===k?'selected':''}>${t}</option>`).join('')}</select></label></div>`;
+ const cards=(items,limit)=>items.slice(0,limit).map(wmListingCard).join('');
+ return filters+`<div class="wm-results">最近三天 · ${g.recent.length} 个摊位</div>`+(g.recent.length?cards(g.recent,wmView.recentLimit):wmEmpty('最近三天没有符合筛选的摊位，看看往期或逛一批新的吧。'))+(g.recent.length>wmView.recentLimit?wmBtn('more','再看一些摊位',`data-id="recent"`):'')+`<section class="wm-history"><button class="wm-history-toggle" data-wm="history" aria-expanded="${wmView.history}" aria-controls="wmHistory"><img src="${WM_ART}archive.webp" alt=""><span><b>往期摊位 · ${g.oldTotal} 个</b><small>三天前上架 · ${g.oldAvailable} 个仍在售 · 当前筛选 ${g.old.length} 个</small></span><span aria-hidden="true">${wmView.history?'⌃':'⌄'}</span></button><div id="wmHistory" ${wmView.history?'':'hidden'}>${wmView.history?(g.old.length?cards(g.old,wmView.oldLimit):wmEmpty('没有符合筛选的往期摊位。','archive')):''}${wmView.history&&g.old.length>wmView.oldLimit?wmBtn('more','再看一些往期摊位','data-id="old"'):''}</div></section>`;
+}
+function wmMarketMode(){return S.market.ui?.navMode==='bag'?'bag':'bar';}
+function wmMarketNav(){
+ const app=$('#app-market');let nav=$('#wmNavigation');if(!nav){nav=document.createElement('div');nav.id='wmNavigation';app.append(nav)}
+ const mode=wmMarketMode();app.dataset.navMode=mode;
+ const tabs=[['listings','逛摊位','browse'],['stall','我的上架','stall'],['orders','我的订单','orders'],['feed','交易动态','feed']];
+ const buttons=tabs.map(([k,t,art])=>`<button data-wm="tab" data-id="${k}" aria-current="${wmTab===k?'page':'false'}"><img src="${WM_ART+art}.webp" alt=""><span>${t}</span></button>`).join('');
+ nav.innerHTML=`${mode==='bar'?`<nav class="wm-bottom-nav" aria-label="集市导航">${buttons}</nav>`:`<nav id="wmBagPanel" class="wm-bag-panel" aria-label="集市导航" ${wmView.menu?'':'hidden'}>${buttons}</nav><button class="wm-float wm-bag" data-wm="menu" aria-label="展开或收起集市导航" aria-controls="wmBagPanel" aria-expanded="${wmView.menu}"><img src="${WM_ART}bag.webp" alt=""></button>`}<button class="wm-float wm-top" data-wm="top" aria-label="返回顶部" hidden><img src="${WM_ART}top.webp" alt=""></button>`;
+ const header=app.querySelector('header');let actions=$('#wmHeaderActions');if(!actions){header.querySelector('span.hbtn')?.remove();actions=document.createElement('div');actions.id='wmHeaderActions';header.append(actions)}
+ const count=wmRequestsCount();actions.innerHTML=`<button class="hbtn wm-mail" data-wm="tab" data-id="requests" aria-label="陌生来信${count?'，'+count+' 封未读':''}" aria-current="${wmTab==='requests'?'page':'false'}"><img src="${WM_ART}letter.webp" alt="">${count?`<span class="wm-badge">${count}</span>`:''}</button><button class="hbtn wm-style" data-wm="nav-style" aria-label="切换导航样式" title="切换导航样式">✦</button>`;
+ $('#marketBody').onscroll=wmTopVisibility;wmTopVisibility();
+}
+function wmTopVisibility(){const b=$('#wmNavigation .wm-top');if(b)b.hidden=$('#marketBody').scrollTop<240;}
+document.addEventListener('change',e=>{if(e.target.id==='wmCategoryFilter'){wmView.category=e.target.value;wmView.recentLimit=wmView.oldLimit=12;wmRenderMarket();}});
+document.addEventListener('click',async e=>{
+ const b=e.target.closest('[data-wm]');if(!b)return;const a=b.dataset.wm,id=b.dataset.id;
+ if(a==='status'){wmView.status=id;wmView.recentLimit=wmView.oldLimit=12;wmRenderMarket();}
+ if(a==='history'){wmView.history=!wmView.history;wmRenderMarket();}
+ if(a==='more'){if(id==='old')wmView.oldLimit+=12;else wmView.recentLimit+=12;wmRenderMarket();}
+ if(a==='menu'){wmView.menu=!wmView.menu;wmMarketNav();}
+ if(a==='top')$('#marketBody').scrollTo({top:0,behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});
+ if(a==='nav-style'){const options=[{label:(wmMarketMode()==='bar'?'✓ ':'')+'底栏模式 · 四个入口常驻'},{label:(wmMarketMode()==='bag'?'✓ ':'')+'狐狸包模式 · 点击展开'}];const i=await actionSheet(options,'选择导航样式');if(i<0||i>1)return;S.market.ui={...S.market.ui,navMode:i===1?'bag':'bar'};wmView.menu=false;await save('market');wmMarketNav();}
+ if(a==='classify'){const l=S.market.listings.find(l=>l.id===id);if(!l)return;const cats=WM_CATEGORIES.slice(1),i=await actionSheet(cats.map(([k,t])=>({label:(wmCategory(l)===k?'✓ ':'')+t})),'调整商品分类');if(i<0||!cats[i])return;l.category=cats[i][0];await save('market');wmRenderMarket();}
+});
+
+function wmListingCard(l){return wmCard(l.name,`<div class="wm-tags"><button class="tag wm-classify" data-wm="classify" data-id="${esc(l.id)}" aria-label="调整商品分类">${esc(wmCategoryLabel(l))} · 编辑</button><span class="tag">${esc(l.world)}</span><span class="tag">${esc(l.type==='wanted'?'十万火急 · 求购':l.preorder?'预售':l.mood)}</span></div><p>${esc(l.desc)}</p><small>${esc(l.seller)} · ${l.type==='wanted'?'剩余需求':'库存'} ${l.stock} · 已成交 ${l.sold}</small><p>${l.type==='wanted'?`对方愿出 ${esc(wmFmt(l.price))} · 需要「${esc(l.need)}」`:l.need?`以物换物：${esc(l.need)} × ${l.needQty}`:`${esc(wmFmt(l.price))}<small>原价 ${l.originPrice} ${esc(l.currency)} · 1 ${esc(l.currency)} ≈ ${l.rate} ${esc(S.wallet.currency)}<br>平台基准 ${esc(wmFmt(l.base))} · 卖家系数 ${l.markup} 倍</small>`}</p>${wmDealPrice(l)<l.price?`<p class="wm-in">你的议价：${esc(wmFmt(wmDealPrice(l)))} / 件 · 本次订单有效，报价保留至 ${new Date(l.deal.expires).toLocaleTimeString()}</p>`:''}${l.stock?wmBtn('trade',l.type==='wanted'?'交付物品':l.need?'挑选交换物':'购买',`data-id="${l.id}"`):'<span class="tag">已售罄 / 已完成</span>'}${wmSocialListing(l)}`);}
 function wmRenderMarket(){
   wmTick();const m=S.market,B=$('#marketBody'),scroll=B.scrollTop;
   let body='';
@@ -225,15 +274,15 @@ function wmRenderMarket(){
   else if(wmTab==='feed')body=m.feed.map(x=>wmCard(new Date(x.at).toLocaleString(),`<p>${esc(x.text)}</p>${x.personId?wmFriendButton(x.personId):''}`)).join('')||'<div class="evt">集市还很安静，逛逛新摊位吧。</div>';
   else if(wmTab==='requests')body=wmRenderRequests();
   else if(wmTab==='stall')body=wmRenderStall();
-  else body=m.listings.map(l=>wmCard(l.name,`<div class="wm-tags"><span class="tag">${esc(l.world)}</span><span class="tag">${esc(l.type==='wanted'?'十万火急 · 求购':l.preorder?'预售':l.mood)}</span></div><p>${esc(l.desc)}</p><small>${esc(l.seller)} · ${l.type==='wanted'?'剩余需求':'库存'} ${l.stock} · 已成交 ${l.sold}</small><p>${l.type==='wanted'?`对方愿出 ${esc(wmFmt(l.price))} · 需要「${esc(l.need)}」`:l.need?`以物换物：${esc(l.need)} × ${l.needQty}`:`${esc(wmFmt(l.price))}<small>原价 ${l.originPrice} ${esc(l.currency)} · 1 ${esc(l.currency)} ≈ ${l.rate} ${esc(S.wallet.currency)}<br>平台基准 ${esc(wmFmt(l.base))} · 卖家系数 ${l.markup} 倍</small>`}</p>${wmDealPrice(l)<l.price?`<p class="wm-in">你的议价：${esc(wmFmt(wmDealPrice(l)))} / 件 · 本次订单有效，报价保留至 ${new Date(l.deal.expires).toLocaleTimeString()}</p>`:''}${l.stock?wmBtn('trade',l.type==='wanted'?'交付物品':l.need?'挑选交换物':'购买',`data-id="${l.id}"`):'<span class="tag">已结束</span>'}${wmSocialListing(l)}`)).join('')||'<div class="evt">联系一下商人，看看今天各个世界带来了什么。</div>';
-  B.innerHTML=`<div class="wm-hero"><small>星光中转站 · 各界商人正在营业</small><strong>万界杂货铺</strong><p>零钱 ${esc(wmFmt(S.wallet.balance))} · 信物只换物</p>${wmBtn('refresh',wmBusy?'正在联系商人…':'✦ 逛一批新摊位')}</div><div class="btns">${['listings','stall','orders','feed','requests'].map((k,i)=>wmBtn('tab',['逛摊位','我的上架','我的订单','交易动态','陌生来信'+(wmRequestsCount()?` (${wmRequestsCount()})`:'')][i],`data-id="${k}" aria-current="${wmTab===k?'page':'false'}"`)).join('')}</div>${body}`;
-  B.scrollTop=scroll;
+  else body=wmBrowse();
+  B.innerHTML=`<div class="wm-hero"><small>星光中转站 · 各界商人正在营业</small><strong>万界杂货铺</strong><p>零钱 ${esc(wmFmt(S.wallet.balance))} · 信物只换物</p>${wmBtn('refresh',wmBusy?'正在联系商人…':'✦ 逛一批新摊位')}</div>${body}`;
+  B.scrollTop=scroll;wmMarketNav();
 }
 async function wmRefresh(){if(wmBusy)return;wmBusy=true;wmRenderMarket();try{
-  const out=await callAPI([{role:'system',content:`你是万界市场内容生成器。生成6个跨世界摊位商品，包含急售、随缘高价、特殊物品交换、批量库存、预售以及1条紧急求购。结合世界书。只输出 JSON {"listings":[{"name":"商品","seller":"商人","world":"来源世界","desc":"说明","type":"sale或wanted","mood":"急售或随缘或溢价","currency":"原产货币","originPrice":50,"rate":2,"markup":1.2,"stock":3,"need":"交换或求购物品名，无则空","needQty":1,"preorder":false,"hours":24,"encounter":{"name":"留影或信件中的人物名，可留空","hint":"人物身份与物品的联系，无人物则留空"}}]}。rate为1单位原产货币能换多少用户货币，遵循世界书中固定汇率；markup是卖家开价系数0.3—5。求购必须有need；描述明确为什么急需、贵卖或预售，勿替用户声称已拥有特殊物品。若商品是人物留影、肖像、信件等，encounter可埋一个人物线索；其他商品encounter留空。`},{role:'user',content:wmContext()}],{char:charById(curT().members[0]),max_tokens:2800,temperature:1});
+  const out=await callAPI([{role:'system',content:`你是万界市场内容生成器。生成6个跨世界摊位商品，包含急售、随缘高价、特殊物品交换、批量库存、预售以及1条紧急求购。结合世界书。只输出 JSON {"listings":[{"name":"商品","seller":"商人","world":"来源世界","desc":"说明","type":"sale或wanted","category":"fashion或food或home或materials或stories或other","mood":"急售或随缘或溢价","currency":"原产货币","originPrice":50,"rate":2,"markup":1.2,"stock":3,"need":"交换或求购物品名，无则空","needQty":1,"preorder":false,"hours":24,"encounter":{"name":"留影或信件中的人物名，可留空","hint":"人物身份与物品的联系，无人物则留空"}}]}。rate为1单位原产货币能换多少用户货币，遵循世界书中固定汇率；markup是卖家开价系数0.3—5。求购必须有need；描述明确为什么急需、贵卖或预售，勿替用户声称已拥有特殊物品。若商品是人物留影、肖像、信件等，encounter可埋一个人物线索；其他商品encounter留空。`},{role:'user',content:wmContext()}],{char:charById(curT().members[0]),max_tokens:2800,temperature:1});
   const j=parseJSON(out);if(!Array.isArray(j.listings)||!j.listings.length)throw Error('商人没有带来有效商品');
-  const now=Date.now(),items=j.listings.slice(0,8).filter(x=>x.name&&x.seller).map(x=>{const rateKey=String(x.currency||S.wallet.currency)+'→'+S.wallet.currency;const rate=S.market.rates[rateKey]??(S.market.rates[rateKey]=Math.max(.001,wmNum(x.rate)));const base=wmNum(wmNum(x.originPrice)*rate),markup=Math.min(5,Math.max(.3,+x.markup||1)),price=Math.max(.01,wmNum(base*markup));return {id:uid(),name:String(x.name).slice(0,100),seller:String(x.seller).slice(0,80),world:String(x.world||'异世界').slice(0,60),desc:String(x.desc||'').slice(0,1200),type:x.type==='wanted'?'wanted':'sale',mood:String(x.mood||'随缘'),currency:String(x.currency||S.wallet.currency).slice(0,20),originPrice:wmNum(x.originPrice),rate,markup,base,price,floor:Math.max(.01,wmNum(base*.45)),stock:Math.min(999,Math.max(1,Math.floor(+x.stock||1))),sold:0,need:String(x.need||'').slice(0,100),needQty:Math.min(99,Math.max(1,Math.floor(+x.needQty||1))),preorder:x.type!=='wanted'&&!!x.preorder,hours:Math.min(720,Math.max(1,+x.hours||24)),at:now,lastPriceAt:now,encounter:x.encounter&&typeof x.encounter==='object'?{name:wmText(x.encounter.name,60),hint:wmText(x.encounter.hint,800)}:null};}).filter(x=>x.type!=='wanted'||x.need);
-  if(!items.length)throw Error('商品格式无效');S.market.listings.push(...items);S.market.refreshAt=now;wmFeed(`${items.length} 个新摊位到站，旧挂单继续营业。`);save('market');
+  const now=Date.now(),items=j.listings.slice(0,8).filter(x=>x.name&&x.seller).map(x=>{const rateKey=String(x.currency||S.wallet.currency)+'→'+S.wallet.currency;const rate=S.market.rates[rateKey]??(S.market.rates[rateKey]=Math.max(.001,wmNum(x.rate)));const base=wmNum(wmNum(x.originPrice)*rate),markup=Math.min(5,Math.max(.3,+x.markup||1)),price=Math.max(.01,wmNum(base*markup));return {id:uid(),category:WM_CATEGORIES.slice(1).some(([k])=>k===x.category)?x.category:undefined,name:String(x.name).slice(0,100),seller:String(x.seller).slice(0,80),world:String(x.world||'异世界').slice(0,60),desc:String(x.desc||'').slice(0,1200),type:x.type==='wanted'?'wanted':'sale',mood:String(x.mood||'随缘'),currency:String(x.currency||S.wallet.currency).slice(0,20),originPrice:wmNum(x.originPrice),rate,markup,base,price,floor:Math.max(.01,wmNum(base*.45)),stock:Math.min(999,Math.max(1,Math.floor(+x.stock||1))),sold:0,need:String(x.need||'').slice(0,100),needQty:Math.min(99,Math.max(1,Math.floor(+x.needQty||1))),preorder:x.type!=='wanted'&&!!x.preorder,hours:Math.min(720,Math.max(1,+x.hours||24)),at:now,lastPriceAt:now,encounter:x.encounter&&typeof x.encounter==='object'?{name:wmText(x.encounter.name,60),hint:wmText(x.encounter.hint,800)}:null};}).filter(x=>x.type!=='wanted'||x.need);
+  if(!items.length)throw Error('商品格式无效');S.market.listings.unshift(...items);wmView.status='available';wmView.category='all';wmView.recentLimit=12;S.market.refreshAt=now;wmFeed(`${items.length} 个新摊位到站，旧挂单继续营业。`);save('market');$('#marketBody').scrollTop=0;toast(items.length+' 个新摊位到站啦');
   }catch(e){toast('没逛成：'+e.message,5000)}finally{wmBusy=false;wmRenderMarket()}}
 async function wmTrade(id){const l=S.market.listings.find(x=>x.id===id);if(!l||!l.stock)return toast('这单已结束');let qty=1,bag=null;
   if(l.need){const candidates=S.wallet.bag.filter(x=>x.qty>=l.needQty&&x.name===l.need&&(l.type!=='wanted'||x.kind!=='token'));if(!candidates.length)return toast(l.type==='wanted'?'背包里没有可交付商品（信物不能换钱）':'需要同名交换物「'+l.need+'」×'+l.needQty);const k=await actionSheet(candidates.map(x=>({label:esc(x.name)+' · '+esc(x.from||'背包')})),'选择要交出的物品（会消耗）');if(k<0)return;bag=candidates[k];}
@@ -250,7 +299,7 @@ setInterval(()=>{if(S.wallet){wmTick();wmDiscover()}},60000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&S.wallet){wmTick();wmDiscover()}});
 document.addEventListener('click',async e=>{const b=e.target.closest('[data-wm]');if(!b||b.dataset.wm==='add-recs')return;const a=b.dataset.wm,id=b.dataset.id;
   try{if(a==='income'||a==='fixed')await wmIncome(a==='fixed');if(a==='recommend')await wmRecommend();if(a==='currency'){const r=await formSheet('钱包货币',[{k:'currency',t:'text',l:'货币名称（改名不换算已有金额）'}],{currency:S.wallet.currency});if(r?.currency?.trim()){S.wallet.currency=r.currency.trim().slice(0,20);save('wallet');wmRenderWallet()}}
-  if(a==='del-income'){S.wallet.incomes=S.wallet.incomes.filter(x=>x.id!==id);save('wallet');wmRenderWallet()}if(a==='ta-wallet')await wmMakeAccount(id);if(a==='sneak')await wmSneak(id);if(a==='refresh')await wmRefresh();if(a==='tab'){wmTab=id;wmRenderMarket()}if(a==='trade')await wmTrade(id);if(a==='use'||a==='gift')await wmUse(id,a==='gift');
+  if(a==='del-income'){S.wallet.incomes=S.wallet.incomes.filter(x=>x.id!==id);save('wallet');wmRenderWallet()}if(a==='ta-wallet')await wmMakeAccount(id);if(a==='sneak')await wmSneak(id);if(a==='refresh')await wmRefresh();if(a==='tab'){wmTab=id;wmView.menu=false;wmRenderMarket();$('#marketBody').scrollTop=0;wmTopVisibility()}if(a==='trade')await wmTrade(id);if(a==='use'||a==='gift')await wmUse(id,a==='gift');
   }catch(err){toast(err.message,5000)}
 });
 
