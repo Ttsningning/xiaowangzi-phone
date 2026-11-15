@@ -4,6 +4,14 @@ const starEsc=s=>esc(String(s??''));
 const starBook=()=>S.starLibrary.books.find(b=>b.id===S.starLibrary.active);
 const starBody=()=>$('#starLibraryBody');
 function starSave(){return save('starLibrary')}
+function starSnapshot(b,c,reason){
+  c.history||=[];c.history.push({at:new Date().toISOString(),reason,text:c.text||'',title:c.title});
+  if(c.history.length>30)c.history.shift();
+}
+function starExportJSON(b){
+  const a=document.createElement('a'),url=URL.createObjectURL(new Blob([JSON.stringify({format:'star-library-book',version:1,book:b},null,2)],{type:'application/json'}));
+  a.href=url;a.download=b.title.replace(/[\\/:*?"<>|]/g,'_')+'.starbook.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),3000);
+}
 function starPartner(){return charById(S.starLibrary.partner)||null}
 function starContext(){const c=starPartner();return c?'你正在以小说搭档「'+c.name+'」的身份交流。人物设定：'+[c.description,c.personality,c.scenario].filter(Boolean).join('\n').slice(0,3500):'你是耐心、有创意的独立 AI 小说写作助手。'}
 function starOptions(){return '<option value="">独立 AI 写作助手</option>'+S.chars.map(c=>'<option value="'+starEsc(c.id)+'">'+starEsc(c.name)+'</option>').join('')}
@@ -16,13 +24,13 @@ function starRender(){
     return;
   }
   const ch=b.chapters[b.chapter||0]||null;
-  root.innerHTML='<div class="card glass"><div class="btns"><button class="btn" data-star="back">‹ 书架</button><button class="btn" data-star="export">导出 TXT</button><button class="btn" data-star="delete">删除作品</button></div><h2>'+starEsc(b.title)+'</h2><div class="field"><label>写作或共读搭档</label><select id="starPartner">'+starOptions()+'</select></div><div class="btns"><button class="btn" data-star="tab" data-tab="outline">一起构思</button><button class="btn" data-star="tab" data-tab="read">一起读</button></div></div>'+
+  root.innerHTML='<div class="card glass"><div class="btns"><button class="btn" data-star="back">‹ 书架</button><button class="btn" data-star="export">导出 TXT</button><button class="btn" data-star="exportJSON">备份作品</button><button class="btn" data-star="delete">删除作品</button></div><h2>'+starEsc(b.title)+'</h2><div class="field"><label>写作或共读搭档</label><select id="starPartner">'+starOptions()+'</select></div><div class="btns"><button class="btn" data-star="tab" data-tab="outline">一起构思</button><button class="btn" data-star="tab" data-tab="read">一起读</button></div></div>'+
     (b.tab==='read'?starReadHTML(b,ch):starOutlineHTML(b));
   $('#starPartner').value=lib.partner||'';
 }
 function starOutlineHTML(b){
   return '<div class="card glass"><h3>故事设定与章节大纲</h3><div class="field"><label>世界观、人物、冲突与故事方向</label><textarea id="starNotes" rows="6">'+starEsc(b.notes||'')+'</textarea></div><div class="btns"><button class="btn pri" data-star="brainstorm">和搭档一起构思</button><button class="btn" data-star="chapter">新增章节</button></div><p class="hint">AI 只提供构思建议；确认后才写入大纲。不会覆盖你原有的内容。</p><div class="field"><label>讨论与构思草稿</label><textarea id="starIdeas" rows="6">'+starEsc(b.ideas||'')+'</textarea></div></div>'+
-    b.chapters.map((c,i)=>'<div class="card glass"><button class="btn" data-star="edit" data-index="'+i+'">第'+(i+1)+'章 · '+starEsc(c.title)+'</button><small> '+(c.text||'').length+' 字</small><div class="btns"><button class="btn pri" data-star="draft" data-index="'+i+'">AI 起草正文</button><button class="btn" data-star="readChapter" data-index="'+i+'">阅读</button></div></div>').join('');
+    b.chapters.map((c,i)=>'<div class="card glass"><button class="btn" data-star="edit" data-index="'+i+'">第'+(i+1)+'章 · '+starEsc(c.title)+'</button><small> '+(c.text||'').length+' 字</small><div class="btns"><button class="btn pri" data-star="draft" data-index="'+i+'">AI 起草正文</button><button class="btn" data-star="readChapter" data-index="'+i+'">阅读</button><button class="btn" data-star="history" data-index="'+i+'">历史版本</button></div></div>').join('');
 }
 function starReadHTML(b,ch){
   return '<div class="card glass"><h3>一起读</h3><div class="field"><label>章节</label><select id="starChapter">'+b.chapters.map((c,i)=>'<option value="'+i+'" '+(i===(b.chapter||0)?'selected':'')+'>'+starEsc(c.title)+'</option>').join('')+'</select></div><article style="white-space:pre-wrap;line-height:2;padding:12px 4px;user-select:text">'+starEsc(ch?.text||'还没有正文。先回到一起构思，写下第一章吧。')+'</article><button class="btn" data-star="chat">💬 '+(b.chatOpen?'收起讨论':'展开聊天')+'</button></div>'+
@@ -45,6 +53,16 @@ async function starAction(action,el){
   if(!b)return;
   if(action==='tab'){b.tab=el.dataset.tab;await starSave();starRender();return}
   if(action==='delete'){if(await actionSheet([{label:'删除作品',danger:true}],'删除后将无法恢复，确定吗？')!==0)return;lib.books=lib.books.filter(x=>x!==b);lib.active='';await starSave();starRender();return}
+  if(action==='exportJSON'){starExportJSON(b);return}
+  if(action==='history'){
+    const c=b.chapters[+el.dataset.index];if(!c)return;
+    const history=c.history||[];if(!history.length)return toast('还没有历史版本');
+    const choice=await actionSheet(history.slice().reverse().map(v=>({label:new Date(v.at).toLocaleString()+' · '+v.reason})),'选择要恢复的章节版本');
+    if(choice<0)return;
+    const v=history[history.length-1-choice];if(!v)return;
+    if(await actionSheet([{label:'恢复这个版本',danger:true}],'恢复前会自动备份当前正文，确定吗？')!==0)return;
+    starSnapshot(b,c,'恢复前自动备份');c.text=v.text;c.title=v.title;await starSave();starRender();return;
+  }
   if(action==='export'){
     const text=b.title+'\n\n'+b.chapters.map(c=>c.title+'\n\n'+c.text).join('\n\n');
     const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type:'text/plain;charset=utf-8'}));a.download=b.title.replace(/[\\/:*?"<>|]/g,'_')+'.txt';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),3000);return;
@@ -59,7 +77,7 @@ async function starAction(action,el){
       const t=await starAI([{role:'system',content:starContext()+'\n请根据世界观和章节安排，写一段自然流畅的中文小说正文。只输出小说正文，不要代替用户修改或删除已有文本。'},{role:'user',content:'书名：'+b.title+'\n故事设定：'+(b.notes||'')+'\n共同构思：'+(b.ideas||'')+'\n本章标题：'+c.title+'\n已有正文：'+(c.text||'').slice(-5000)+'\n请续写约600字作为待审核草稿。'}],1500);
       if(starBook()!==b||b.chapters[i]!==c)return;
       const result=await formSheet('AI 章节草稿 · 确认后才保存',[{k:'draft',t:'textarea',l:'可编辑的待审核正文'}],{draft:t},{hint:'这是新生成的候选段落。取消则不修改原稿。'});
-      if(result&&starBook()===b&&b.chapters[i]===c){c.text=(c.text?c.text+'\n\n':'')+result.draft;b.chapter=i;await starSave();starRender();toast('已加入章节正文')}
+      if(result&&starBook()===b&&b.chapters[i]===c){starSnapshot(b,c,'AI 草稿确认前');c.text=(c.text?c.text+'\n\n':'')+result.draft;b.chapter=i;await starSave();starRender();toast('已加入章节正文')}
     }catch(e){toast(e.message,6000)}finally{el.disabled=false}return;
   }
   if(action==='chat'){b.chatOpen=!b.chatOpen;await starSave();starRender();return}
@@ -80,7 +98,7 @@ async function starAction(action,el){
 async function starEditChapter(i){
   const b=starBook(),c=b?.chapters[i];if(!c)return;
   const result=await formSheet('编辑章节',[{k:'title',t:'text',l:'章节标题'},{k:'text',t:'textarea',l:'正文'}],{title:c.title,text:c.text||''});
-  if(!result||starBook()!==b)return;c.title=result.title||c.title;c.text=result.text||'';b.chapter=i;await starSave();starRender();
+  if(!result||starBook()!==b)return;starSnapshot(b,c,'手动编辑前');c.title=result.title||c.title;c.text=result.text||'';b.chapter=i;await starSave();starRender();
 }
 document.addEventListener('click',e=>{const el=e.target.closest('[data-star]');if(el)starAction(el.dataset.star,el).catch(err=>toast(err.message,5000))});
 document.addEventListener('change',async e=>{
