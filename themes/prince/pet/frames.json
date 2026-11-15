@@ -1,0 +1,42 @@
+{
+  "idle": {
+    "frames": 4,
+    "file": "idle.webp"
+  },
+  "walk": {
+    "frames": 6,
+    "file": "walk.webp"
+  },
+  "climb": {
+    "frames": 6,
+    "file": "climb.webp"
+  },
+  "hang": {
+    "frames": 2,
+    "file": "hang.webp"
+  },
+  "mount": {
+    "frames": 6,
+    "file": "mount.webp"
+  },
+  "happy": {
+    "frames": 4,
+    "file": "happy.webp"
+  },
+  "jump": {
+    "frames": 5,
+    "file": "jump.webp"
+  },
+  "held": {
+    "frames": 3,
+    "file": "held.webp"
+  },
+  "fail": {
+    "frames": 6,
+    "file": "fail.webp"
+  },
+  "rest": {
+    "frames": 1,
+    "file": "rest.webp"
+  }
+}

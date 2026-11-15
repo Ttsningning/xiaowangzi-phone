@@ -647,6 +647,7 @@ input,textarea,select{font:inherit;color:var(--text)}
 
 </style>
 <link rel="stylesheet" href="keepsakes.css">
+<link rel="stylesheet" href="companion.css">
 </head>
 <body>
 <div id="phone">
@@ -2757,11 +2758,12 @@ function underColor(){
 </script>
 <script src="world-market.js"></script>
 <script src="keepsakes.js"></script>
+<script src="companion.js"></script>
 <script>
 /* ========== 启动 ========== */
 (async()=>{
   try{await load()}catch(e){toast('本地存储打不开：'+e.message,6000);for(const k in DEFAULTS)S[k]??=structuredClone(DEFAULTS[k])}
-  wmInit();presetList();syncUnread();fitPhone();tick();applyTheme();renderHome();
+  wmInit();presetList();syncUnread();fitPhone();tick();applyTheme();renderHome();if(typeof foxInit==='function')foxInit();
   if(!S.settings.showLock)$('#lock').classList.add('hide');
   setTimeout(checkProactive,2500);
 })();

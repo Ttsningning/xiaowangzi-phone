@@ -1,0 +1,14 @@
+#foxLayer{position:absolute;inset:0;z-index:18;pointer-events:none;overflow:hidden}
+#foxLayer[hidden],#foxHome[hidden],#foxBubble[hidden],#foxReplay[hidden]{display:none!important}
+#foxActor{position:absolute;left:0;top:0;padding:0;border:0;background:transparent;box-shadow:none;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;pointer-events:auto;cursor:grab;will-change:transform}
+#foxActor:active{cursor:grabbing}#foxActor:focus-visible{outline:2px dashed var(--accent);outline-offset:2px;border-radius:40%}
+#foxSprite{display:block;width:100%;height:100%;background-repeat:no-repeat;transform-origin:center}
+#foxActor[data-action="rest"] #foxSprite{animation:fox-breathe 3s ease-in-out infinite;transform-origin:center bottom}
+@keyframes fox-breathe{50%{scale:1.015 1.035}}
+#foxBubble{position:absolute;pointer-events:auto;border:1px solid rgba(255,255,255,.8);background:rgba(255,247,251,.96);color:#67496f;box-shadow:0 4px 20px #634c6a20;border-radius:18px 18px 18px 4px;padding:11px 12px;font-size:13px;line-height:1.6;max-height:160px;overflow-y:auto;overflow-wrap:anywhere}
+#foxBubble button{font-size:17px;min-width:32px;min-height:30px;padding:2px 6px;color:#a36f93;vertical-align:middle}#foxWords{white-space:pre-wrap}
+#foxHome{position:absolute;right:14px;bottom:calc(var(--bot) + 102px);z-index:19;padding:5px 10px;border-radius:99px;background:rgba(255,246,248,.8);color:#775278;font-size:11px;border:1px solid #fff9;backdrop-filter:blur(8px)}
+.fox-welcome{display:flex;align-items:center;gap:8px;padding:10px 0 20px}.fox-portrait{flex:0 0 108px;height:108px;background:url('themes/prince/pet/idle.webp') 0 0/400% 100% no-repeat}.fox-welcome h2{font-family:"Songti SC",serif;margin:8px 0;font-size:25px}.fox-welcome p,.fox-welcome small{color:var(--muted);font-size:13px;line-height:1.6;margin:0}.fox-controls{display:flex;justify-content:center;flex-wrap:wrap;gap:8px;margin-bottom:20px}.fox-card{border:1px solid var(--line);background:var(--glass);border-radius:24px;padding:18px}.fox-card label{display:block;font-size:14px;margin-bottom:20px}.fox-card input:not([type=checkbox]),.fox-card select{display:block;width:100%;margin-top:10px;padding:10px;border-radius:12px;border:1px solid var(--line);background:var(--inbg);color:var(--text)}.fox-card input[type=range]{padding:0;accent-color:#ba8eae}.fox-card output{float:right;color:var(--muted)}.fox-card .fox-check{display:flex;align-items:center;gap:8px;line-height:1.6}.fox-check input{accent-color:#ba8eae;width:18px;height:18px}.fox-card>.btn{display:block;margin:auto}#foxSettings>.hint{font-size:12px;line-height:1.8;margin:18px 4px}#app-settings>.body>button:last-child{display:block;margin:18px auto}
+@media(prefers-reduced-motion:reduce){#foxActor[data-action="rest"] #foxSprite{animation:none}}
+/* Keep off-screen app transitions from scrolling the phone shell itself. */
+@supports(overflow:clip){#phone{overflow:clip}}
