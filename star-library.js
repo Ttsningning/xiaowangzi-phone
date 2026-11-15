@@ -12,7 +12,18 @@ function starTouch(b){b.updatedAt=Date.now()}
 function starInit(){
  starEnsure();
  if(!S.home.starLibraryV1){if(!S.home.pages.flat().some(x=>x.type==='app'&&x.app==='starLibrary'))S.home.pages.at(-1).push({id:uid(),type:'app',app:'starLibrary'});S.home.starLibraryV1=true;save('home')}
- const body=$('#starLibraryBody');body.addEventListener('scroll',()=>{const b=starBook();if(b?.tab==='read'){b.readScroll||={};b.readScroll[b.chapter||0]=body.scrollTop;clearTimeout(starInit.scrollTimer);starInit.scrollTimer=setTimeout(()=>starSave().catch(starError),250)}},{passive:true});
+ const body=$('#starLibraryBody');body.addEventListener('scroll',()=>{if(starRememberReading()){clearTimeout(starInit.scrollTimer);starInit.scrollTimer=setTimeout(()=>starSave().catch(starError),250)}},{passive:true});
+ document.addEventListener('visibilitychange',()=>{if(document.hidden)starFlushReading().catch(starError)});
+ window.addEventListener('pagehide',()=>starFlushReading().catch(starError));
+}
+// Keep the displayed chapter attached to its scroll events while navigation redraws it.
+function starRememberReading(){
+ const r=starInit.reading,body=$('#starLibraryBody');
+ if(!r||r.restoring||!starLive(r.book)||!$('#app-starLibrary').classList.contains('open'))return false;
+ r.book.readScroll||={};r.book.readScroll[r.chapter]=body.scrollTop;return true;
+}
+function starFlushReading(){
+ starRememberReading();clearTimeout(starInit.scrollTimer);clearTimeout(starInit.inputTimer);return starSave();
 }
 function starError(e){toast(e.message||String(e),5000)}
 function starSnapshot(c,reason){c.history||=[];c.history.push({id:uid(),at:Date.now(),reason,title:c.title,text:c.text||'',outline:c.outline||''});}
@@ -25,11 +36,14 @@ function starBaseBook(title,source='write'){return {id:uid(),title:title.slice(0
 function starFileInputs(){return '<input id="starFile" type="file" accept=".txt,.docx,text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden><input id="starBackupFile" type="file" accept=".json,application/json" hidden>'}
 function starShelfHTML(L){const list=L.books.filter(b=>L.view!=='completed'||b.status==='completed').filter(b=>!L.search||b.title.toLowerCase().includes(L.search.toLowerCase())).slice().sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));return `<div class="star-shelf-head"><h3>${L.view==='completed'?'共同作品':'我的书架'}</h3><span>${list.length} 本</span></div><input class="star-search" id="starSearch" aria-label="搜索书名" placeholder="找一本书…" value="${esc(L.search||'')}"><div class="star-book-grid">${list.map(b=>`<button class="star-book" data-star="open" data-id="${esc(b.id)}">${starArt(b.status==='completed'?'works':b.source==='write'?'write':'read',66)}<b>${esc(b.title)}</b><small>${b.source==='write'?'共同创作':'一起读'} · ${b.chapters.length} 章${b.status==='completed'?' · 已完成':''}</small><span>${b.chapters.length?'读到第 '+((b.chapter||0)+1)+' 章':'等待第一章'}</span></button>`).join('')}</div>${list.length?'':`<div class="star-empty">${starArt('empty',230)}<p>${L.search?'没有找到这本书':'空着的位置，留给下一段故事。'}</p></div>`}`;}
 function starRender(){
- const root=$('#starLibraryBody');if(!root)return;const L=starEnsure(),b=starBook();
+ const root=$('#starLibraryBody');if(!root)return;const L=starEnsure(),b=starBook();starInit.reading=null;
  if(!b){root.innerHTML=`<div class="star-hero">${starArt('home',155)}<div><small>和喜欢的人，把故事读下去</small><h2>星页书房</h2><p>一起读，一起写，装订属于我们的故事。</p></div></div><div class="star-entry-grid"><button data-star="import">${starArt('read',72)}<b>一起读</b><small>带一本 TXT / Word 来</small></button><button data-star="create">${starArt('write',72)}<b>一起写</b><small>接力 · 大纲 · 导演</small></button><button data-star="shelf">${starArt('shelf',72)}<b>我的书架</b><small>继续上次的那一页</small></button><button data-star="completed">${starArt('works',72)}<b>共同作品</b><small>收好已经完成的故事</small></button></div><div id="starShelf">${starShelfHTML(L)}</div><div class="btns">${starButton('importBackup','恢复作品备份')}${starButton('trash',`找回删除的书（${L.trash.length}）`)}</div><p class="hint">书稿、阅读进度和讨论保存在这台设备；可导出作品备份，也随小手机总备份保存。Word 支持 .docx；旧 .doc 请先另存为 .docx。</p>${starFileInputs()}`;return;}
  const chapter=b.chapters[b.chapter||0],job=starJobs.has(b.id);
  root.innerHTML=`<div class="star-book-head"><div class="btns">${starButton('back','‹ 书架')}${starButton('book-menu','作品管理')}</div><div class="star-title-row">${starArt(b.source==='write'?'write':'read',64)}<div><small>${b.source==='write'?'我们正在写':'我们正在读'}${b.status==='completed'?' · 已完成':''}</small><h2>${esc(b.title)}</h2></div></div><label class="star-partner">共读 / 写作搭档<select id="starPartner" ${job?'disabled':''}>${starOptions(b)}</select></label><div class="star-tabs"><button data-star="tab" data-tab="read" aria-pressed="${b.tab==='read'}">一起读</button><button data-star="tab" data-tab="outline" aria-pressed="${b.tab!=='read'}">一起写</button></div>${job?'<p class="star-status" role="status">搭档正在准备内容，原稿已收好…</p>':''}</div>`+(b.tab==='read'?starReadHTML(b,chapter):starWriteHTML(b));
- if(b.tab==='read')requestAnimationFrame(()=>{if(starBook()===b&&b.tab==='read')root.scrollTop=b.readScroll?.[b.chapter||0]||0});
+ if(b.tab==='read'){
+  const reading=starInit.reading={book:b,chapter:b.chapter||0,restoring:true};
+  requestAnimationFrame(()=>{if(starInit.reading!==reading)return;root.scrollTop=b.readScroll?.[reading.chapter]||0;reading.restoring=false});
+ }
 }
 function starReadHTML(b,c){const L=starEnsure(),i=b.chapter||0,posts=b.discussion.filter(x=>x.chapter===i),font=Math.max(16,Math.min(26,+L.reader.font||19)),tone=['paper','lilac','night'].includes(L.reader.tone)?L.reader.tone:'paper';
  return `<div class="star-reader-tools"><label>章节<select id="starChapter" ${!b.chapters.length?'disabled':''}>${b.chapters.map((x,j)=>`<option value="${j}"${j===i?' selected':''}>${esc(x.title)}</option>`).join('')}</select></label><small>${b.chapters.length?`${i+1} / ${b.chapters.length} 章`:'尚无正文'}</small><div class="btns">${starButton('prev','上一章',i===0?'disabled':'')}${starButton('next','下一章',i>=b.chapters.length-1?'disabled':'')}${starButton('bookmark','收藏这一页')}${starButton('marks',`书签 ${b.bookmarks.length}`)}</div><div class="star-reading-options"><label>字号<select id="starFont">${[16,19,22,26].map(v=>`<option${font===v?' selected':''}>${v}</option>`).join('')}</select></label><label>纸张<select id="starTone">${[['paper','奶油纸'],['lilac','淡紫'],['night','夜读']].map(([v,t])=>`<option value="${v}"${tone===v?' selected':''}>${t}</option>`).join('')}</select></label></div></div><article id="starArticle" class="star-reader star-tone-${tone}" style="font-size:${font}px"><h3>${esc(c?.title||'这一页还空着')}</h3><div>${esc(c?.text||'先到「一起写」添加章节，再来读给彼此听。')}</div></article><div class="btns">${starButton('quote','选中一句，和搭档聊聊')}${starButton('chat',b.chatOpen?'收起讨论':'展开章节讨论')}</div>${b.chatOpen?`<section class="star-discussion"><h3>这一章，想和你聊</h3><p class="hint">只带入当前及之前的章节，保留本章最近的讨论，不发送后续章节。</p><div class="star-discussion-log">${posts.map(x=>`<div class="star-dialog ${x.role==='user'?'mine':''}"><b>${esc(x.role==='user'?S.user.name:x.name||'搭档')}</b><p>${esc(x.text)}</p></div>`).join('')||'<p class="hint">喜欢哪一句，或者哪里没看懂，都可以说。</p>'}</div><label>想聊的话<textarea id="starQuestion" placeholder="聊聊人物、伏笔，或刚才选中的句子…">${esc(b.drafts.question||'')}</textarea></label><div class="btns">${starButton('ask',starJobs.has(b.id)?'正在回应…':'发送讨论',starJobs.has(b.id)?'disabled':'')}</div></section>`:''}`;
@@ -70,7 +84,7 @@ async function starAsk(b){
 }
 async function starEditChapter(b,i){const c=b.chapters[i];if(!c)return;const before=JSON.stringify(c);const r=await formSheet('编辑章节',[{k:'title',t:'text',l:'章节标题'},{k:'outline',t:'textarea',l:'本章大纲'},{k:'text',t:'textarea',l:'正文'}],{title:c.title,outline:c.outline||'',text:c.text||''});if(!r||!starLive(b)||b.chapters[i]!==c)return;if(JSON.stringify(c)!==before)throw Error('这一章已有更新，请重新打开编辑');starSnapshot(c,'手动编辑前');Object.assign(c,{title:String(r.title||'').trim().slice(0,100)||c.title,text:r.text||'',outline:r.outline||''});b.chapter=i;starTouch(b);await starSave();starRender()}
 async function starAction(action,el){
- const L=starEnsure(),b=starBook();
+ starRememberReading();const L=starEnsure(),b=starBook();
  if(action==='create'){const r=await formSheet('开始一个新故事',[{k:'title',t:'text',l:'故事名字'}],{title:''},{hint:'先写一个暂定名，以后随时可以改。'});if(!r)return;const x=starBaseBook((r.title||'').trim());L.books.unshift(x);L.active=x.id;await starSave();starRender();return}
  if(action==='import'){$('#starFile').click();return}if(action==='importBackup'){$('#starBackupFile').click();return}
  if(action==='open'){L.active=el.dataset.id;await starSave();starRender();return}
@@ -141,7 +155,7 @@ function starRestoreBook(d){
  b.bookmarks=(Array.isArray(s.bookmarks)?s.bookmarks:[]).filter(m=>Number.isInteger(m?.chapter)&&m.chapter>=0&&m.chapter<b.chapters.length).map(m=>({id:uid(),chapter:m.chapter,label:String(m.label||b.chapters[m.chapter].title),scroll:Math.max(0,Number(m.scroll)||0),at:Number(m.at)||Date.now()}));b.readScroll={};for(let i=0;i<b.chapters.length;i++)if(Number.isFinite(+s.readScroll?.[i]))b.readScroll[i]=Math.max(0,+s.readScroll[i]);b.drafts={};for(const k of ['relay','director','question'])b.drafts[k]=String(s.drafts?.[k]||'').slice(0,20000);const candidate=p=>p&&typeof p.text==='string'&&['text','ideas'].includes(p.kind)&&Number.isInteger(p.chapter)&&p.chapter>=0?{id:uid(),kind:p.kind,generationKind:['relay','direct','draft','brainstorm'].includes(p.generationKind)?p.generationKind:'draft',mode:STAR_MODES[p.mode]?p.mode:'outline',chapter:p.chapter,input:String(p.input||''),text:p.text}:null;b.pendingDraft=candidate(s.pendingDraft)||undefined;b.savedDrafts=(Array.isArray(s.savedDrafts)?s.savedDrafts:[]).map(candidate).filter(Boolean);return b;
 }
 document.addEventListener('click',e=>{const el=e.target.closest('[data-star]');if(el&&!el.disabled)starAction(el.dataset.star,el).catch(starError)});
-document.addEventListener('change',async e=>{const L=starEnsure(),b=starBook(),id=e.target.id;try{
+document.addEventListener('change',async e=>{starRememberReading();const L=starEnsure(),b=starBook(),id=e.target.id;try{
  if(id==='starPartner'&&b){b.partner=e.target.value;L.partner=b.partner;await starSave();return}
  if(id==='starWriteMode'&&b){b.writeMode=e.target.value;await starSave();starRender();return}
  if(['starChapter','starWritingChapter'].includes(id)&&b){b.chapter=+e.target.value;await starSave();starRender();return}

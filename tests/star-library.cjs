@@ -43,5 +43,30 @@ const w=dom.window,ev=x=>w.eval(x),check=(label,source)=>{assert.ok(ev(source),l
  ev('b.title="<img src=x onerror=alert(1)>";S.starLibrary.active="";starRender()');check('untrusted book titles render as text',String.raw`!document.querySelector(".star-book img[src=x]")&&document.querySelector(".star-book").textContent.includes("<img")`);
  ev('S.starLibrary.active=b.id;var originalActionSheet=actionSheet;actionSheet=async()=>4');await ev('starAction("book-menu",{dataset:{}})');check('delete moves book to recoverable trash',String.raw`!starLive(b)&&S.starLibrary.trash.includes(b)`);ev('actionSheet=async()=>0');await ev('starAction("trash",{dataset:{}})');check('trash restores full book',String.raw`starLive(b)&&b.chapters[0].history.length>0`);
  ev('actionSheet=originalActionSheet;formSheet=originalForm;callAPI=originalAPI;var allBackup=buildBackup()');await ev('applyBackup(allBackup)');check('phone backup roundtrip includes library and keeps character chat separate',String.raw`S.starLibrary.books.some(x=>x.id===b.id)&&curT().msgs.every(m=>!m.content.includes("搭档续写的新段落"))`);
+ // Regression: navigation and app closure must preserve the displayed page, even before debounced saving.
+ ev('S.starLibrary.active=b.id;b=starBook();b.tab="read";b.chapter=0;openApp("starLibrary")');await new Promise(r=>setTimeout(r,40));
+ ev('var readerBody=document.querySelector("#starLibraryBody");readerBody.scrollTop=420;readerBody.dispatchEvent(new Event("scroll"))');
+ await ev('starAction("next",{dataset:{}})');
+ ev('readerBody.scrollTop=0;readerBody.dispatchEvent(new Event("scroll"))');await new Promise(r=>setTimeout(r,40));
+ check('chapter redraw cannot overwrite the previous reading page',String.raw`b.chapter===1&&b.readScroll[0]===420&&readerBody.scrollTop===0`);
+ ev('readerBody.scrollTop=735;closeApps()');await new Promise(r=>setTimeout(r,40));
+ check('closing the app immediately flushes the reading chapter and page',String.raw`b.readScroll[1]===735`);
+ const disk=await ev('DB.get("starLibrary")');assert.equal(disk.books.find(x=>x.id===ev('b.id')).readScroll[1],735);
+ ev('S.starLibrary=structuredClone('+JSON.stringify(disk)+');openApp("starLibrary")');await new Promise(r=>setTimeout(r,40));
+ check('reloaded persisted book resumes at its saved chapter and page',String.raw`starBook().chapter===1&&readerBody.scrollTop===735`);
+ await ev('starAction("prev",{dataset:{}})');await new Promise(r=>setTimeout(r,40));
+ check('each chapter keeps its own saved page',String.raw`starBook().chapter===0&&readerBody.scrollTop===420`);
+ // Exercise preset UI and intercept the actual generation request without spending API credit.
+ ev('var settingsBeforePreset=structuredClone(S.settings);delete S.settings.naiPresets;S.settings.naiPos="legacy-positive";S.settings.naiNeg="legacy-negative";renderSettings()');
+ check('legacy image prompt migrates without losing positive or negative tags',String.raw`S.settings.naiPresets[0].positive==="legacy-positive"&&S.settings.naiPresets[0].negative==="legacy-negative"`);
+ ev('document.querySelector("#naiPresetNew").click();for(const [id,value] of [["naiPresetName","成熟美人"],["naiPresetPositive","adult, portrait"],["naiPresetArtist","painterly"],["naiPresetNegative","blurry"]]){const f=document.getElementById(id);f.value=value;f.dispatchEvent(new Event("input",{bubbles:true}))}var selectedPreset=S.settings.naiPresetActive;document.querySelector("#naiPresetDuplicate").click()');
+ check('copying a preset keeps all three prompt fields',String.raw`S.settings.naiPresets.length===3&&S.settings.naiPos==="adult, portrait, painterly"&&S.settings.naiNeg==="blurry"`);
+ ev('var selector=document.querySelector("#naiPresetSelect");selector.value="legacy";selector.dispatchEvent(new Event("change"));');
+ check('switching presets restores the matching prompt fields',String.raw`S.settings.naiPos==="legacy-positive"&&S.settings.naiNeg==="legacy-negative"`);
+ ev('selector.value=selectedPreset;selector.dispatchEvent(new Event("change"));S.settings.naiKey="mock-only";var fetchBeforePreset=fetch,naiPayload;fetch=async(url,options)=>{naiPayload=JSON.parse(options.body);return {ok:false,status:418,text:async()=>"mock request captured"}}');
+ await assert.rejects(ev('naiImage("1woman",null,true,{})'),/418/);
+ check('NAI generation uses the selected positive artist and negative tags',String.raw`naiPayload.input==="1woman, adult, portrait, painterly"&&naiPayload.parameters.negative_prompt==="blurry"`);
+ await ev('save("settings")');const persistedSettings=await ev('DB.get("settings")');assert.equal(persistedSettings.naiPresetActive,ev('selectedPreset'));assert.equal(persistedSettings.naiPresets.length,3);
+ ev('fetch=fetchBeforePreset;S.settings=settingsBeforePreset');
  assert.deepEqual(errors,[]);console.log('PASS no runtime errors');
 })().catch(e=>{console.error(e);process.exitCode=1}).finally(()=>dom.window.close());

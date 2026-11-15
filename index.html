@@ -1672,8 +1672,8 @@ function openApp(id){
   $$('.app:not(#gameView)').forEach(a=>a.classList.toggle('open',STACK.includes(a.id.slice(4))));
   RENDER[id]?.();if(id==='chat')clearUnread(curT());underColor();
 }
-function popApp(){const id=STACK.pop();if(id){$('#app-'+id)?.classList.remove('open');if(id==='diary')afterDiary();if(id==='peek')afterPeek()}const top=STACK.at(-1);if(top)RENDER[top]?.();else renderHome();underColor()}
-function closeApps(){STACK.length=0;$$('.app:not(#gameView)').forEach(a=>a.classList.remove('open'));renderHome();underColor()}
+function popApp(){if(STACK.at(-1)==='starLibrary')starFlushReading().catch(starError);const id=STACK.pop();if(id){$('#app-'+id)?.classList.remove('open');if(id==='diary')afterDiary();if(id==='peek')afterPeek()}const top=STACK.at(-1);if(top)RENDER[top]?.();else renderHome();underColor()}
+function closeApps(){if(STACK.includes('starLibrary'))starFlushReading().catch(starError);STACK.length=0;$$('.app:not(#gameView)').forEach(a=>a.classList.remove('open'));renderHome();underColor()}
 function openThread(tid){const T=S.threads.find(t=>t.id===tid);if(!T)return;S.state.cur=tid;save('state');openApp._direct=true;openApp('chat')}
 
 /* ========== 锁屏 ========== */
