@@ -644,7 +644,7 @@ input,textarea,select{font:inherit;color:var(--text)}
 
 .reply-draft{flex:none;display:flex;gap:10px;align-items:center;padding:9px 14px;border-top:1px solid var(--line);background:var(--inbg);font-size:12px}.reply-draft[hidden]{display:none}.reply-draft span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.reply-draft button{flex:none;color:var(--muted);font:inherit;background:none;border:0;padding:8px}
 .msg-quote{display:block;max-width:100%;min-width:0;text-align:left;overflow-wrap:anywhere;border:1px solid var(--line);border-left:3px solid var(--accent);background:var(--glass);color:var(--text);border-radius:10px;padding:8px 10px;margin-bottom:6px;font:inherit;font-size:12px;cursor:pointer}.msg-quote b{display:block;margin-bottom:4px}.msg-quote span{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;white-space:pre-wrap;line-height:1.5}.quote-flash{animation:quoteFlash 1.4s ease-out}@keyframes quoteFlash{from{filter:drop-shadow(0 0 10px var(--accent))}to{filter:none}}
-.photo-block{max-width:100%;min-width:0}.photo-block .pic{max-width:100%}.photo-block .photo-redraw{display:block;margin:6px 0 2px;padding:7px 10px;font-size:12px}.photo-redraw:disabled{opacity:.65}.photo-block .photo-status{display:block;color:var(--muted);font-size:11px;margin-top:6px}.para .photo-block{width:100%}
+#sheet.photo-editor textarea[data-f]{min-height:88px;height:110px}.photo-editor textarea[data-f=negative_prompt]{min-height:64px;height:75px}#sheet.photo-editor>.hint{font-size:12px!important;line-height:1.65!important}#sheet.photo-editor>.btns:last-child{position:sticky;bottom:-8px;background:var(--sheetbg);padding:10px 0 4px;z-index:2}.photo-block{max-width:100%;min-width:0}.photo-block .pic{max-width:100%}.photo-block .photo-edit-info{font-size:11px;padding:6px 10px;margin-top:8px;margin-left:6px}.photo-redraw{display:block;margin:6px 0 2px;padding:7px 10px;font-size:12px}.photo-redraw:disabled{opacity:.65}.photo-block .photo-status{display:block;color:var(--muted);font-size:11px;margin-top:6px}.para .photo-block{width:100%}
 
 </style>
 <link rel="stylesheet" href="keepsakes.css">
@@ -737,6 +737,7 @@ input,textarea,select{font:inherit;color:var(--text)}
         <div class="field"><label>开场白</label><textarea data-c="first_mes"></textarea><div class="hint">可在下方用开场白开始一段线下剧情。</div></div>
         <div class="field"><label>对话示例</label><textarea data-c="mes_example"></textarea></div>
         <div class="field"><label>外貌（生图用）</label><textarea data-c="look" style="min-height:70px" placeholder="比如：黑色短发、深邃眼睛、高个子、常穿黑色西装"></textarea></div>
+        <div class="field"><label for="charTimeAware">时间感知</label><select id="charTimeAware"><option value="inherit">跟随全局设置</option><option value="on">开启 · 感知真实时间与聊天间隔</option><option value="off">关闭 · 按剧情时间相处</option></select><div class="hint">每个角色单独保存。单聊按此设置；群聊全部成员开启时才加入真实时间。</div></div>
         <div class="field"><label>语音音色</label><input data-c="voice" placeholder="MiniMax 填 voice_id（如 male-qn-jingying），OpenAI 兼容填 alloy 之类"><div class="hint">不填就用设置里的默认音色。用系统朗读时可以填系统声音名里的一个词。</div></div>
         <div class="field"><label>专属 API（选填）</label><div class="hint" style="margin:0 0 8px">三项都填好，这个角色就用自己的接口说话（聊天、见面、朋友圈、日记、查手机、记忆整理）；留空就用设置里的公共 API。</div>
           <select data-ca="fmt"><option value="openai">OpenAI 兼容（中转 / 大多数平台）</option><option value="anthropic">Anthropic 官方（Claude）</option></select></div>
@@ -840,7 +841,7 @@ input,textarea,select{font:inherit;color:var(--text)}
       </div>
       <div class="card glass">
         <h3>活人感</h3>
-        <label class="chk"><input type="checkbox" data-s="timeAware">让 TA 知道现在几点、隔了多久</label>
+        <label class="chk"><input type="checkbox" data-s="timeAware">让 TA 知道现在几点、隔了多久</label><div class="hint">这是全局默认值，也可以在「角色」里为每个人单独开启或关闭。</div>
         <label class="chk"><input type="checkbox" data-s="proactive">TA 会主动找你</label>
         <label class="chk"><input type="checkbox" data-s="diaryCaught">偷看日记有可能被 TA 发现</label>
         <div class="field"><label>多久没聊，TA 会想来找你（小时，在这个范围里随机）</label><div class="two"><input data-s="proMin" type="number" step="0.5" min="0.5"><input data-s="proMax" type="number" step="0.5" min="0.5"></div></div>
@@ -1223,9 +1224,9 @@ function refreshLive(){for(const it of S.home.pages.flat()){if(it.kind==='weathe
 function weatherLine(){const it=S.home.pages?.flat().find(i=>i.kind==='weather'&&i.data?.wx);if(!it)return '';const w=it.data.wx;return `${it.data.place||it.data.city}现在${wxOf(w.code)[1]}，${Math.round(w.t)}°C（今天${Math.round(w.lo)}~${Math.round(w.hi)}°C）`}
 
 /* 编辑表单 */
-function formSheet(title,fields,data){return new Promise(res=>{
-  const d=structuredClone(data||{}),s=$('#sheet');
-  const draw=()=>{s.innerHTML=`<h3 class="sht">${esc(title)}</h3>`+fields.map(f=>{const v=d[f.k]??'';switch(f.t){
+function formSheet(title,fields,data,options={}){return new Promise(res=>{
+  const d=structuredClone(data||{}),s=$('#sheet');s.classList.toggle('photo-editor',!!options.photoEditor);
+  const draw=()=>{s.innerHTML=`<h3 class="sht">${esc(title)}</h3>${options.hint?`<p class="hint" style="margin:8px 6px 16px;line-height:1.8">${esc(options.hint)}</p>`:''}`+fields.filter(f=>!f.when||f.when(d)).map(f=>{const v=d[f.k]??'';switch(f.t){
     case 'text':return `<div class="field"><label>${f.l}</label><input data-f="${f.k}" value="${esc(v)}" placeholder="${esc(f.ph||'')}"${f.num?' inputmode="decimal"':''}></div>`;
     case 'textarea':case 'lines':return `<div class="field"><label>${f.l}</label><textarea data-f="${f.k}" placeholder="${esc(f.ph||'')}">${esc(v)}</textarea></div>`;
     case 'multi':return `<div class="field"><label>${f.l}</label><div class="fchips">${f.opts.map(([id,n])=>`<button data-fmul="${f.k}" data-v="${esc(id)}" class="${(d[f.k]||[]).includes(id)?'on':''}">${esc(n)}</button>`).join('')}</div></div>`;
@@ -1235,9 +1236,9 @@ function formSheet(title,fields,data){return new Promise(res=>{
     case 'select':return `<div class="field"><label>${f.l}</label><div class="fchips">${f.opts.map(o=>`<button data-fsel="${f.k}" data-v="${esc(o)}" class="${v===o?'on':''}">${esc(o)}</button>`).join('')}</div></div>`;
     case 'gallery':return `<div class="field"><label>${f.l}</label><div class="fgal">${STICKERS().map(u=>`<button data-fsel="${f.k}" data-v="${u}" class="${v===u?'on':''}"><img src="${u}" loading="lazy" alt=""></button>`).join('')}</div></div>`;
     case 'theme':return `<div class="field"><label>${f.l}</label><div class="fchips">${Object.entries(TH).map(([k,[n,c]])=>`<button data-fsel="${f.k}" data-v="${k}" class="${(v||'glass')===k?'on':''}"><i style="background:${c}"></i>${n}</button>`).join('')}</div></div>`}}).join('')+
-    `<div class="btns" style="justify-content:flex-end;margin:8px 6px 4px"><button class="btn" id="fNo">取消</button><button class="btn pri" id="fOk">保存</button></div>`;
+    `<div class="btns" style="justify-content:flex-end;margin:8px 6px 4px"><button class="btn" id="fNo">取消</button><button class="btn" id="fOk">${esc(options.saveLabel||'保存')}</button>${options.alternateLabel?`<button class="btn pri" id="fAlt">${esc(options.alternateLabel)}</button>`:''}</div>`;
     s.querySelectorAll('[data-f]').forEach(el=>el.addEventListener('input',()=>d[el.dataset.f]=el.value));
-    $('#fNo').onclick=()=>{closeSheet();res(null)};$('#fOk').onclick=()=>{closeSheet();res(d)};};
+    $('#fNo').onclick=()=>{closeSheet();res(null)};const finish=action=>{const error=options.validate?.(d);if(error)return toast(error,4500);closeSheet();res(action?{...d,_action:action}:d)};$('#fOk').onclick=()=>finish();if($('#fAlt'))$('#fAlt').onclick=()=>finish('generate');};
   s.onclick=async e=>{
     const im=e.target.closest('[data-fimg]'),cl=e.target.closest('[data-fclr]'),au=e.target.closest('[data-faud]'),se=e.target.closest('[data-fsel]');
     if(im){const f=fields.find(x=>x.k===im.dataset.fimg),file=await pickFile('image/*');if(!file)return;d[f.k]=await fileToImg(file,f.max||1000,f.png?'image/png':undefined);draw()}
@@ -1614,7 +1615,7 @@ async function checkProactive(){
     if(now<T.nextPro||unansweredBursts(T)>=2)continue;
     const due=T.nextPro,ts=now-due>10*6e4?due:0,at=ts||now;T.nextPro=0;saveThreads();
     const c=tName(T),u=S.user.name;
-    await generate(T,'online',`距离上一次互动已经过去${fmtGap(at-lastRealTs(T))}，现在是${fmtFull(at)}。${c}主动给${u}发消息：可以分享此刻在做的事、想念、关心，或者接着你们最近聊过的事，要符合当下的时间和${c}的性格，自然得像真人。${unansweredBursts(T)?`${u}还没回${c}上次发的消息，${c}可以表现出在意。`:''}`,{ts,pro:true});
+    await generate(T,'online',`${threadTimeAware(T)?`距离上一次互动已经过去${fmtGap(at-lastRealTs(T))}，现在是${fmtFull(at)}。`:''}${c}主动给${u}发消息：可以分享此刻在做的事、想念、关心，或者接着你们最近聊过的事，要符合${threadTimeAware(T)?'当下的时间和':''}${c}的性格，自然得像真人。${unansweredBursts(T)?`${u}还没回${c}上次发的消息，${c}可以表现出在意。`:''}`,{ts,pro:true});
     return;
   }
 }
@@ -1719,9 +1720,11 @@ function momentsFor(T,n=4){
   const nm=w=>w==='user'?S.user.name:(charById(w)?.name||'');
   return L.map(p=>`- ${fmtTime(p.ts)} ${nm(p.who)}发了朋友圈：${p.text}${p.imgs?.length?`（配了${p.imgs.length}张图）`:''}${p.likes?.length?`；点赞：${p.likes.map(nm).join('、')}`:''}${p.comments?.length?`；评论：${p.comments.map(c=>`${nm(c.who)}${c.to?'回复'+nm(c.to):''}：${c.text}`).join(' / ')}`:''}`).join('\n');
 }
+function charTimeAware(c){return typeof c?.timeAware==='boolean'?c.timeAware:!!S.settings.timeAware}
+function threadTimeAware(T){const cs=tChars(T);return cs.length?cs.every(charTimeAware):!!S.settings.timeAware}
 function buildPrompt(T,mode,extra,now=Date.now()){
-  const u=S.user,st=S.settings,P=activePreset(),cs=tChars(T),grp=isGroup(T),cn=tName(T);
-  const mac=t=>macro(t,T).replaceAll('{{length}}',st.storyLength).replaceAll('{{time}}',fmtFull(now));
+  const u=S.user,st=S.settings,P=activePreset(),cs=tChars(T),grp=isGroup(T),cn=tName(T),timeAware=threadTimeAware(T);
+  const mac=t=>macro(t,T).replaceAll('{{length}}',st.storyLength).replaceAll('{{time}}',timeAware?fmtFull(now):'剧情中的当前时间');
   let sys=grp?`你将同时扮演群聊「${cn}」里的这些角色：${cs.map(c=>c.name).join('、')}，和「${u.name}」进行一段线上（手机群聊）与线下（现实见面）交织的故事。每个角色都有自己的性格和说话方式，彼此之间也会互动、接话、拌嘴。线上和线下发生在同一条时间线上，你记得发生过的所有事。\n`:(P.main||DEFAULT_PRESET.main)+'\n';
   for(const c of cs)sys+=cardBlock(c,grp?'群成员':'角色设定');
   if(u.persona)sys+=`\n【${u.name}的设定】\n${u.persona}\n`;
@@ -1734,10 +1737,10 @@ function buildPrompt(T,mode,extra,now=Date.now()){
   const mo=momentsFor(T);if(mo)semi+=`\n【朋友圈近况】\n${mo}\n`;
   if(!grp){const d=(S.diaries[cs[0]?.id]||[])[0];if(d)semi+=`\n【${cs[0].name}最近写的日记（只有自己知道，${u.name}${d.peeked?'可能偷看过':'没看过'}）】\n${fmtTime(d.ts)} ${d.title||''}：${d.text.slice(0,300)}\n`}
   const lastTs=lastRealTs(T);
-  const timeTxt=!st.timeAware?'':`\n【现在的时间】${fmtFull(now)}${lastTs&&now-lastTs>60e3?`\n距离上一条消息过去了${fmtGap(now-lastTs)}。`:''}${weatherLine()?`\n天气：${weatherLine()}。`:''}\n作息、状态和话题要符合这个时间。\n`;dyn+=timeTxt;
+  const timeTxt=!timeAware?'':`\n【现在的时间】${fmtFull(now)}${lastTs&&now-lastTs>60e3?`\n距离上一条消息过去了${fmtGap(now-lastTs)}。`:''}${weatherLine()?`\n天气：${weatherLine()}。`:''}\n作息、状态和话题要符合这个时间。\n`;dyn+=timeTxt;
   dyn+=wmPrompt(T);
   const cut=sys.length;
-  sys+=`\n对话记录中，${u.name}的话会带有[线上·手机消息]、[线下·见面]或[场景]标记，用来说明当时在哪里${st.timeAware?'、过了多久':''}；你的回复不要带这些标记。\n`;
+  sys+=`\n对话记录中，${u.name}的话会带有[线上·手机消息]、[线下·见面]或[场景]标记，用来说明当时在哪里${timeAware?'、过了多久':''}；你的回复不要带这些标记。\n`;
   if(mode==='online'){
     sys+=grp?`\n【当前：线上群聊】大家正在群里发消息。像真人在群里聊天那样：口语化、简短，可以几个人接连发言、互相回应，不是每个人每次都要说话，按性格决定谁说话。每条消息单独一行，开头用【名字】标明是谁发的，例如：\n【${cs[0]?.name||'甲'}】哈哈哈\n【${cs[1]?.name||cs[0]?.name||'乙'}】你又来\n只输出消息本身，不写动作描写或旁白。`
       :`\n【当前：线上】${P.online||DEFAULT_PRESET.online}`;
@@ -1749,7 +1752,7 @@ function buildPrompt(T,mode,extra,now=Date.now()){
   /* 聊天记录按 10 条一段地丢，开头保持不变，缓存才能命中 */
   const H=T.msgs.slice(T.mem.upTo),cz=+st.contextSize||40,from=H.length>cz?Math.floor((H.length-cz)/10)*10:0;
   for(const m of H.slice(from)){
-    if(st.timeAware&&prev&&m.ts-prev>30*6e4)add('user',`[场景] （时间来到${fmtFull(m.ts)}，距上一条过了${fmtGap(m.ts-prev)}）`);
+    if(timeAware&&prev&&m.ts-prev>30*6e4)add('user',`[场景] （时间来到${fmtFull(m.ts)}，距上一条过了${fmtGap(m.ts-prev)}）`);
     prev=m.ts;add(m.role==='assistant'?'assistant':'user',msgLine(T,m));
   }
   const hist=arr.map(m=>({role:m.role,content:mac(m.content)}));
@@ -2114,12 +2117,12 @@ function stopVoice(){try{vAudio?.pause();speechSynthesis.cancel()}catch(_){}vPla
 async function msgMenu(i){
   const T=curT(),m=T.msgs[i];if(!m)return;
   const isLastAI=m.role==='assistant'&&T.msgs.slice(i+1).every(x=>x.role==='assistant');
-  const opts=[{label:'复制',k:'copy'}];if(m.mode==='online'&&m.role!=='event')opts.push({label:'引用回复',k:'quote'});if(m.type==='image'&&m.role==='assistant')opts.push({label:'重新生成图片',k:'photo'});if(!m.type||m.type==='voice')opts.push({label:'编辑',k:'edit'});if(m.type==='voice')opts.push({label:m.showText?'收起文字':'转文字',k:'txt'});
+  const opts=[{label:'复制',k:'copy'}];if(m.mode==='online'&&m.role!=='event')opts.push({label:'引用回复',k:'quote'});if(m.type==='image'&&m.role==='assistant')opts.push({label:'编辑信息',k:'photo-edit'},{label:'重新生成图片',k:'photo'});if(!m.type||m.type==='voice')opts.push({label:'编辑',k:'edit'});if(m.type==='voice')opts.push({label:m.showText?'收起文字':'转文字',k:'txt'});
   if(isLastAI&&m.type!=='image')opts.push({label:'重新生成',k:'regen'});opts.push({label:'删除',k:'del',danger:true});
   const pick=await actionSheet(opts);if(pick==null||pick<0||!opts[pick]||!S.threads.includes(T)||!T.msgs.includes(m))return;const k=opts[pick].k;
   const rerender=()=>{m.mode==='online'?renderChat():renderStory()};
   if(k==='quote')quoteMessage(T,m);
-  if(k==='photo')await regeneratePhoto(T,m);
+  if(k==='photo')await regeneratePhoto(T,m);if(k==='photo-edit')await editPhotoInfo(T,m);
   if(k==='copy'){navigator.clipboard?.writeText(m.content).then(()=>toast('已复制'),()=>toast('复制失败'))}
   if(k==='txt'){m.showText=!m.showText;saveMsgs(T);rerender()}
   if(k==='edit'){const v=await editor(m.content);if(v!==null&&v.trim()){m.content=v.trim();delete m.audio;saveMsgs(T);rerender()}}
@@ -2140,7 +2143,7 @@ async function openGift(i){
 (()=>{const L=$('#chatList');let t,lp=0;
   L.addEventListener('pointerdown',e=>{if(e.target.closest('[data-photo-regen],[data-quote-id]'))return;const el=e.target.closest('[data-i]');if(!el)return;lp=0;t=setTimeout(()=>{lp=1;msgMenu(+el.dataset.i)},520)});
   ['pointerup','pointerleave','pointercancel'].forEach(k=>L.addEventListener(k,()=>clearTimeout(t)));L.addEventListener('contextmenu',e=>e.preventDefault());
-  L.addEventListener('click',e=>{const q=e.target.closest('[data-quote-id]');if(q)return jumpToQuote(q.dataset.quoteId);const re=e.target.closest('[data-photo-regen]');if(re){const T=curT();regeneratePhoto(T,T.msgs[+re.dataset.photoRegen]);return}if(lp){lp=0;return}const el=e.target.closest('[data-i]');if(!el)return;const i=+el.dataset.i,T=curT(),m=T.msgs[i];
+  L.addEventListener('click',e=>{const q=e.target.closest('[data-quote-id]');if(q)return jumpToQuote(q.dataset.quoteId);const edit=e.target.closest('[data-photo-edit]');if(edit){const T=curT();editPhotoInfo(T,T.msgs[+edit.dataset.photoEdit]);return}const re=e.target.closest('[data-photo-regen]');if(re){const T=curT();regeneratePhoto(T,T.msgs[+re.dataset.photoRegen]);return}if(lp){lp=0;return}const el=e.target.closest('[data-i]');if(!el)return;const i=+el.dataset.i,T=curT(),m=T.msgs[i];
     if(el.dataset.voice!==undefined){if(vPlaying===el)return stopVoice();return playVoice(T,m,el)}
     if(el.dataset.gift!==undefined)return openGift(i);
     if(el.dataset.order!==undefined){const D=T.msgs[i].data||{},o=S.orders.find(x=>x.id===D.oid);return toast(o?`${D.name} · ${o.status==='delivered'?'已送达':'预计 '+new Date(o.eta).toTimeString().slice(0,5)+' 送达'}`:D.name)}
@@ -2170,7 +2173,7 @@ $('#storySend').onclick=()=>{
   else generate(T,'offline','继续推进剧情');
 };
 $('#storyWho').onclick=async()=>{const L=S.threads;const i=await actionSheet(L.map(T=>({label:(T===curT()?'✓ ':'')+tName(T)})),'和谁见面');if(i>=0){S.state.cur=L[i].id;save('state');renderStory()}};
-$('#storyList').addEventListener('click',e=>{const re=e.target.closest('[data-photo-regen]');if(re){const T=curT();regeneratePhoto(T,T.msgs[+re.dataset.photoRegen]);return}const pic=e.target.closest('[data-pic]');if(pic){const im=pic.querySelector('img');if(im)return showViewer(im.src)}const el=e.target.closest('[data-i]');if(el)msgMenu(+el.dataset.i)});
+$('#storyList').addEventListener('click',e=>{const edit=e.target.closest('[data-photo-edit]');if(edit){const T=curT();editPhotoInfo(T,T.msgs[+edit.dataset.photoEdit]);return}const re=e.target.closest('[data-photo-regen]');if(re){const T=curT();regeneratePhoto(T,T.msgs[+re.dataset.photoRegen]);return}const pic=e.target.closest('[data-pic]');if(pic){const im=pic.querySelector('img');if(im)return showViewer(im.src)}const el=e.target.closest('[data-i]');if(el)msgMenu(+el.dataset.i)});
 $('#storyImg').onclick=()=>illustrate(curT());
 
 /* ========== 记忆 App ========== */
@@ -2186,12 +2189,12 @@ function renderChar(){
   const c=editingChar();
   $('#charPick').innerHTML=S.chars.map(x=>`<button data-pick="${x.id}" class="${c&&x.id===c.id?'on':''}">${charAv(x)}<span>${esc(x.name)}</span></button>`).join('')+`<button data-pick="me" class="${!c?'on':''}">${avHTML('user')}<span>我</span></button><button data-pick="new"><div class="av">＋</div><span>新角色</span></button>`;
   $('#charCard').style.display=c?'':'none';$('#meCard').style.display=c?'none':'';$('#charBtns').style.display=c?'':'none';
-  if(c){$$('[data-c]').forEach(el=>el.value=c[el.dataset.c]||'');const a=c.api||{};$$('[data-ca]').forEach(el=>el.value=a[el.dataset.ca]||({fmt:'openai',cache:'off'})[el.dataset.ca]||'');$('[data-cashow]').style.display=a.fmt==='anthropic'?'':'none';showStat(c);$('#charAv').outerHTML=charAv(c).replace('class="av"','class="av" id="charAv"')}
+  if(c){$('#charTimeAware').value=c.timeAware===true?'on':c.timeAware===false?'off':'inherit';$$('[data-c]').forEach(el=>el.value=c[el.dataset.c]||'');const a=c.api||{};$$('[data-ca]').forEach(el=>el.value=a[el.dataset.ca]||({fmt:'openai',cache:'off'})[el.dataset.ca]||'');$('[data-cashow]').style.display=a.fmt==='anthropic'?'':'none';showStat(c);$('#charAv').outerHTML=charAv(c).replace('class="av"','class="av" id="charAv"')}
   $$('[data-u]').forEach(el=>el.value=S.user[el.dataset.u]||'');$('#userAv').outerHTML=avHTML('user').replace('class="av"','class="av" id="userAv"');
 }
 $('#charPick').onclick=e=>{const b=e.target.closest('[data-pick]');if(!b)return;readCharForm();const k=b.dataset.pick;
   if(k==='new'){const c={id:'c'+uid(),name:'新角色',avatar:'',description:'',personality:'',scenario:'',first_mes:'',mes_example:'',voice:''};S.chars.push(c);saveChars();charEdit=c.id}else charEdit=k;renderChar()};
-function readCharForm(){const c=editingChar();if(c){$$('[data-c]').forEach(el=>c[el.dataset.c]=el.value.trim());c.api={...(c.api||{})};$$('[data-ca]').forEach(el=>c.api[el.dataset.ca]=el.value.trim());c.name||='TA';saveChars()}$$('[data-u]').forEach(el=>S.user[el.dataset.u]=el.value.trim());S.user.name||='我';save('user')}
+function readCharForm(){const c=editingChar();if(c){const clock=$('#charTimeAware').value;if(clock==='inherit')delete c.timeAware;else c.timeAware=clock==='on';$$('[data-c]').forEach(el=>c[el.dataset.c]=el.value.trim());c.api={...(c.api||{})};$$('[data-ca]').forEach(el=>c.api[el.dataset.ca]=el.value.trim());c.name||='TA';saveChars()}$$('[data-u]').forEach(el=>S.user[el.dataset.u]=el.value.trim());S.user.name||='我';save('user')}
 $('#charSave').onclick=()=>{readCharForm();renderChar();toast('已保存')};
 $$('[data-avatar]').forEach(b=>b.onclick=async()=>{const f=await pickFile('image/*');if(!f)return;readCharForm();const img=await fileToImg(f,400,'image/png');if(b.dataset.avatar==='char'){const c=editingChar();c.avatar=img;saveChars()}else{S.user.avatar=img;save('user')}renderChar()});
 $('#charMemory').onclick=()=>{readCharForm();if(editingChar()&&typeof ksOpenMemory==='function')ksOpenMemory(editingChar().id)};
@@ -2253,7 +2256,7 @@ $('#msgsBody').addEventListener('click',async e=>{
     const target=to||(p.who!=='user'?p.who:null);if(target&&target!=='user')replyComment(p,target,t.trim())}
 });
 function charCtx(c){const T=threadOf(c.id),u=S.user.name;
-  return `${cardBlock(c,'角色')}${S.user.persona?`\n【${u}的设定】\n${S.user.persona}\n`:''}${T.mem.summary?`\n【你和${u}之间发生过的事】\n${T.mem.summary}\n`:''}\n【你们最近的聊天】\n${T.msgs.filter(m=>m.role!=='event').slice(-14).map(m=>`${m.role==='user'?u:c.name}：${preview(m)}`).join('\n')||'（还没怎么聊过）'}\n\n现在是${fmtFull(Date.now())}。`}
+  return `${cardBlock(c,'角色')}${S.user.persona?`\n【${u}的设定】\n${S.user.persona}\n`:''}${T.mem.summary?`\n【你和${u}之间发生过的事】\n${T.mem.summary}\n`:''}\n【你们最近的聊天】\n${T.msgs.filter(m=>m.role!=='event').slice(-14).map(m=>`${m.role==='user'?u:c.name}：${preview(m)}`).join('\n')||'（还没怎么聊过）'}${charTimeAware(c)?`\n\n现在是${fmtFull(Date.now())}。`:''}`}
 async function genPost(c,ts){
   const out=await callAPI([{role:'system',content:`你是「${c.name}」本人，现在要发一条朋友圈。${charCtx(c)}`},{role:'user',content:`以${c.name}的身份发一条朋友圈：内容贴合你的性格、近况和你们最近发生的事，可以是日常、心情、暗戳戳的思念或吐槽，像真人随手发的，30~100字，可以带 emoji，不要写成日记。如果这条适合配一张照片，在 photo 里写具体的画面描述，不需要就留空。只输出 JSON：{"text":"朋友圈内容","photo":"画面描述或空字符串"}`}],{temperature:1,max_tokens:500,char:c});
   const j=parseJSON(out);if(!j.text)throw new Error('没写出来');
@@ -2296,11 +2299,13 @@ async function caption(img){
   if(!r.ok)throw new Error(`识图接口报错 ${r.status}（这个模型可能不支持看图）`);
   const j=await r.json();const t=j.choices?.[0]?.message?.content;if(!t)throw new Error('识图没有返回内容');return clean(t);
 }
-async function genImage(desc,c,meta){
-  if(S.settings.imgProv==='nai')return naiImage(desc,c,false,meta);
-  const s=S.settings,base=(s.imgBase||s.baseUrl).replace(/\/+$/,''),key=s.imgKey||s.apiKey;
+async function genImage(desc,c,meta,options={}){
+  if(S.settings.imgProv==='nai')return naiImage(desc,c,false,meta,options);
+  const s={...S.settings},base=(s.imgBase||s.baseUrl).replace(/\/+$/,''),key=s.imgKey||s.apiKey;
   const look=c?.look?`画面中如果出现${c.name}，外貌是：${c.look}。`:'';const ulook=S.user.look?`画面中如果出现${S.user.name}，外貌是：${S.user.look}。`:'';
-  const r=await fetch(base+'/images/generations',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+key},body:JSON.stringify({model:s.imgModel,prompt:`${desc}。${look}${ulook}${s.imgStyle||''}`,n:1,size:s.imgSize||'1024x1024'})});
+  const prompt=options.mode==='raw'?options.prompt:`${desc}。${look}${ulook}${s.imgStyle||''}`;if(!String(prompt||'').trim())throw Error('请先填写生图提示词');
+  if(meta)Object.assign(meta,{provider:'openai',model:s.imgModel,size:s.imgSize||'1024x1024',prompt,description:desc,...(Object.keys(options).length?{photoEdit:structuredClone(options)}:{})});
+  const r=await fetch(base+'/images/generations',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+key},body:JSON.stringify({model:s.imgModel,prompt,n:1,size:s.imgSize||'1024x1024'})});
   if(!r.ok){const t=await r.text().catch(()=>'');throw new Error(`生图接口报错 ${r.status}：${t.slice(0,120)}`)}
   const j=await r.json(),d=j.data?.[0];if(!d)throw new Error('生图没有返回图片');
   const src=d.b64_json?'data:image/png;base64,'+d.b64_json:d.url;if(!src)throw new Error('生图没有返回图片');
@@ -2328,16 +2333,16 @@ async function toTags(desc,c){
   try{const r=await callAPI([{role:'system',content:'你是 NovelAI 绘图提示词助手。把画面描述改写成英文 danbooru 风格 tag，用逗号分隔，先写人数（如 1boy, 1girl, 1boy 1girl）、再写人物外貌、动作表情、服装、场景、光线、构图。只输出 tag，不要解释，不要中文，不超过 60 个 tag。'},{role:'user',content:`画面：${desc}\n${look}`}],{max_tokens:300,temperature:.4});
     const t=clean(r).replace(/\n/g,', ').replace(/^tags?[:：]\s*/i,'');return /[a-z]/i.test(t)?t:desc}catch(_){return desc}
 }
-async function naiImage(desc,c,raw,meta){
-  const s=S.settings;if(!s.naiKey)throw new Error('还没填 NovelAI 的 Token');
+async function naiImage(desc,c,raw,meta,options={}){
+  const s={...S.settings};if(!s.naiKey)throw new Error('还没填 NovelAI 的 Token');
   const host=(s.naiHost||'https://image.novelai.net').replace(/\/+$/,''),url=/\/ai\/generate-image$/.test(host)?host:host+'/ai/generate-image';
   const [w,h]=(s.naiSize||'832x1216').split('x').map(Number),v4=/diffusion-[45]/.test(s.naiModel);
-  const rawSeed=String(s.naiSeed??'').trim();if(rawSeed!==''&&rawSeed!=='-1'&&(!/^\d+$/.test(rawSeed)||!Number.isInteger(Number(rawSeed))||Number(rawSeed)>4294967295))throw Error('种子要填 0—4294967295 的整数，留空或 -1 表示随机');
+  const rawSeed=String(options.seed??s.naiSeed??'').trim();if(rawSeed!==''&&rawSeed!=='-1'&&(!/^\d+$/.test(rawSeed)||!Number.isInteger(Number(rawSeed))||Number(rawSeed)>4294967295))throw Error('种子要填 0—4294967295 的整数，留空或 -1 表示随机');
   const seed=rawSeed===''||rawSeed==='-1'?Math.floor(Math.random()*4294967296):Number(rawSeed);
   const schedule=['native','karras','exponential','polyexponential'].includes(s.naiSchedule)?s.naiSchedule:(v4?'karras':'native');
-  const tags=raw?desc:await toTags(desc,c),prompt=[tags,s.naiPos].filter(Boolean).join(', '),neg=s.naiNeg||'';
+  const tags=options.mode==='raw'?options.prompt:raw?desc:await toTags(desc,c),prompt=options.mode==='raw'?tags:[tags,s.naiPos].filter(Boolean).join(', '),neg=options.negative_prompt??s.naiNeg??'';if(!String(prompt||'').trim())throw Error('请先填写生图提示词');
   const P={width:w,height:h,scale:+s.naiScale||5,sampler:s.naiSampler||'k_euler_ancestral',steps:+s.naiSteps||28,n_samples:1,ucPreset:0,qualityToggle:true,seed,negative_prompt:neg,noise_schedule:schedule};
-  if(meta)Object.assign(meta,{provider:'nai',model:s.naiModel,seed,noise_schedule:schedule,sampler:P.sampler,steps:P.steps,scale:P.scale,size:s.naiSize,prompt,negative_prompt:neg});
+  if(meta)Object.assign(meta,{provider:'nai',model:s.naiModel,seed,noise_schedule:schedule,sampler:P.sampler,steps:P.steps,scale:P.scale,size:s.naiSize,prompt,negative_prompt:neg,description:desc,...(Object.keys(options).length?{photoEdit:structuredClone(options)}:{})});
   if(v4)Object.assign(P,{params_version:3,cfg_rescale:0,dynamic_thresholding:false,legacy:false,legacy_v3_extend:false,add_original_image:true,prefer_brownian:true,deliberate_euler_ancestral_bug:false,characterPrompts:[],use_coords:false,
     v4_prompt:{caption:{base_caption:prompt,char_captions:[]},use_coords:false,use_order:true},v4_negative_prompt:{caption:{base_caption:neg,char_captions:[]},legacy_uc:false}});
   else Object.assign(P,{sm:false,sm_dyn:false});
@@ -2402,13 +2407,38 @@ $('#ttsTest').onclick=async()=>{const st=S.settings,txt=$('#ttsTestText').value.
 $('#imgTest').onclick=async()=>{if(!imgReady())return toast('先把生图设置填完整');const d=$('#imgTestText').value.trim()||'星空下的小王子和狐狸';
   toast('画画中…一般要十几秒',30000);try{const img=await genImage(d,null);toast('画好啦');showViewer(img)}catch(e){toast(e.message,6000)}};
 function updShow(){const st=S.settings;$$('[data-show]').forEach(el=>{const [k,v]=el.dataset.show.split('=');el.style.display=(st[k]||'')===v?'':'none'});$$('[data-hide]').forEach(el=>{const [k,v]=el.dataset.hide.split('=');el.style.display=(st[k]||'')===v?'none':''})}
+function photoEditDefaults(m){
+ const D=m.data||{},v=D.generation||{},e=D.photoEdit||{},s=S.settings,provider=s.imgProv==='nai'?'nai':'openai';
+ return {mode:e.mode==='raw'||(!e.mode&&v.prompt)?'直接提示词':'画面描述',description:e.description??m.content??D.caption??'',prompt:e.prompt||v.prompt||'',negative_prompt:e.negative_prompt??v.negative_prompt??s.naiNeg??'',seed:String(e.seed??v.seed??s.naiSeed??''),provider};
+}
+function photoEditError(r,provider){
+ if(r.mode==='直接提示词'?!String(r.prompt||'').trim():!String(r.description||'').trim())return r.mode==='直接提示词'?'请填写最终提示词':'请填写画面描述';
+ if(String(r.description||'').length>12000||String(r.prompt||'').length>20000||String(r.negative_prompt||'').length>12000)return '提示词太长，请缩短后保存';
+ const seed=String(r.seed??'').trim();if(provider==='nai'&&seed!==''&&seed!=='-1'&&(!/^\d+$/.test(seed)||!Number.isInteger(Number(seed))||Number(seed)>4294967295))return 'Seed 请填 0—4294967295 的整数，留空或 -1 随机';
+ return '';
+}
+async function editPhotoInfo(T,m){
+ if(!m||m.type!=='image'||m.role!=='assistant'||!S.threads.includes(T)||!T.msgs.includes(m))return;
+ if(photoBusy.has(m))return toast('这张图片正在生成，完成后再编辑信息');
+ const data=photoEditDefaults(m),before=JSON.stringify(m.data?.photoEdit||null),fields=[{k:'mode',t:'select',l:'编辑方式',opts:['画面描述','直接提示词']},{k:'description',t:'textarea',l:'画面描述',when:v=>v.mode!=='直接提示词'},{k:'prompt',t:'textarea',l:'最终正面提示词（原样发送）',when:v=>v.mode==='直接提示词'}];
+ if(data.provider==='nai')fields.push({k:'negative_prompt',t:'textarea',l:'这张图的负面提示词（NAI）'},{k:'seed',t:'text',l:'这张图的 Seed（留空或 -1 随机）'});
+ const r=await formSheet('编辑生图信息',fields,data,{photoEditor:true,hint:'仅修改这张图，原聊天与全局设置保持原样。画面描述会自动补充外貌和画风；直接提示词原样发送。仅保存不生成。',saveLabel:'仅保存',alternateLabel:'保存并生成',validate:v=>photoEditError(v,data.provider)});
+ if(!r)return;if(!S.threads.includes(T)||!T.msgs.includes(m))return toast('这条图片消息已经不在了');
+ if(photoBusy.has(m)||JSON.stringify(m.data?.photoEdit||null)!==before)return toast('图片信息刚刚更新了，请重新打开后编辑');
+ const error=photoEditError(r,data.provider);if(error)return toast(error);
+ const e={provider:data.provider,mode:r.mode==='直接提示词'?'raw':'description',description:String(r.description||'').trim(),prompt:r.mode==='直接提示词'?String(r.prompt||'').trim():''};
+ if(data.provider==='nai'){e.negative_prompt=String(r.negative_prompt??'').trim();e.seed=String(r.seed??'').trim()}
+ m.data||={};m.data.photoEdit=e;await saveMsgs(T);renderPhotoThread(T,m);
+ if(r._action==='generate')await regeneratePhoto(T,m);else toast('这张图的生图信息已保存，原图保留');
+}
+
 const photoBusy=new WeakSet();
 function photoHTML(m,i){
   const D=m.data||{},src=D.img,working=photoBusy.has(m),canRedraw=m.role==='assistant';let body;
   if(src)body=`<div class="pic" data-i="${i}" data-pic><img src="${esc(src)}" alt="${esc(m.content||'照片')}"></div>`;
   else if(working)body=`<div class="pic wait" data-i="${i}">📷 正在${m.mode==='offline'?'画这一幕':'拍照'}…</div>`;
   else body=`<div class="tphoto" data-i="${i}"><div>${esc(m.content||D.caption||'一张照片')}</div><small>${m.mode==='offline'?'SCENE':'PHOTO'}</small></div>`;
-  return `<div class="photo-block" data-i="${i}">${body}${canRedraw?`<button class="btn photo-redraw" data-photo-regen="${i}"${working?' disabled':''}>${working?'正在生成图片…':D.gen==='fail'?'重试生成图片':'重新生成图片'}</button>`:''}${canRedraw?'<small class="photo-status">按原画面描述生成，使用当前生图接口</small>':''}</div>`;
+  return `<div class="photo-block" data-i="${i}">${body}${canRedraw?`<button class="btn photo-redraw" data-photo-regen="${i}"${working?' disabled':''}>${working?'正在生成图片…':D.gen==='fail'?'重试生成图片':'重新生成图片'}</button>`:''}${canRedraw?`<button class="btn photo-edit-info" data-photo-edit="${i}"${working?' disabled':''}>编辑信息</button><small class="photo-status">${D.photoEdit?'已保存这张图的专用生图信息':'可编辑画面描述与提示词'} · 使用当前生图接口</small>`:''}</div>`;
 }
 function renderPhotoThread(T,m){if(curT()!==T)return;if(m.mode==='online'&&chatOpen(T))renderChat();if(m.mode==='offline'&&$('#app-story').classList.contains('open'))renderStory()}
 async function regeneratePhoto(T,m){
@@ -2421,7 +2451,7 @@ async function fillPhoto(T,m){
   m.data||={};if(!imgReady()){m.data.gen='text';saveMsgs(T);return}
   const old=m.data.img;photoBusy.add(m);m.data.gen='pending';renderPhotoThread(T,m);
   try{
-    const meta={},img=await genImage(m.content,charById(m.who)||charById(T.members[0]),meta);
+    const meta={},options=structuredClone(m.data.photoEdit||{}),desc=options.description||m.content,img=await genImage(desc,charById(m.who)||charById(T.members[0]),meta,options);
     if(!S.threads.includes(T)||!T.msgs.includes(m))return;
     if(!img)throw Error('生图没有返回图片');m.data.img=img;m.data.gen='done';m.data.generation=meta;if(typeof ksRecordPhoto==='function')ksRecordPhoto(T,m,old);
   }catch(e){if(S.threads.includes(T)&&T.msgs.includes(m)){m.data.gen=old?'done':'fail';toast((old?'这次没画好，原图已保留：':'图片生成失败：')+e.message,5000)}}
