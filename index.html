@@ -2327,11 +2327,20 @@ async function unzipFirst(buf){
   const ds=new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
   return new Blob([await new Response(ds).arrayBuffer()],{type:'image/png'});
 }
+function naiLookReferences(desc,c){
+  const text=String(desc||'');
+  // References are opt-in by name: unrelated user/character details must never enter translation.
+  const people=[c,S.user].filter(Boolean),seen=new Set();
+  return people.filter(p=>p.name&&text.includes(p.name)&&p.look&&!seen.has(p.name)&&seen.add(p.name)).map(p=>`${p.name}的外貌参考（仅补充画面未指定的细节）：${p.look}`).join('\n');
+}
 async function toTags(desc,c){
-  const look=[c?.look?`${c.name}的外貌：${c.look}`:'',S.user.look?`${S.user.name}的外貌：${S.user.look}`:''].filter(Boolean).join('\n');
-  if(!S.settings.baseUrl||!S.settings.apiKey)return desc;
-  try{const r=await callAPI([{role:'system',content:'你是 NovelAI 绘图提示词助手。把画面描述改写成英文 danbooru 风格 tag，用逗号分隔，先写人数（如 1boy, 1girl, 1boy 1girl）、再写人物外貌、动作表情、服装、场景、光线、构图。只输出 tag，不要解释，不要中文，不超过 60 个 tag。'},{role:'user',content:`画面：${desc}\n${look}`}],{max_tokens:300,temperature:.4});
-    const t=clean(r).replace(/\n/g,', ').replace(/^tags?[:：]\s*/i,'');return /[a-z]/i.test(t)?t:desc}catch(_){return desc}
+  const scene=String(desc||'').trim();
+  // English prompts/tags are already valid NAI input; preserve wording, gender and weights exactly.
+  if(!/[\u3400-\u9fff]/.test(scene))return scene;
+  const look=naiLookReferences(scene,c);
+  if(!S.settings.baseUrl||!S.settings.apiKey)return scene;
+  try{const r=await callAPI([{role:'system',content:'你是 NovelAI 绘图提示词翻译助手。只把画面描述翻译成英文 danbooru 风格 tag，用逗号分隔。画面描述中明确指定的人数、性别、外貌、服装、动作与构图是最高优先级，不得改写或替换；外貌参考仅能补充已点名人物未指定的细节，不得增加人物或把不同人物特征混合。未点名用户时不得默认画用户；未点名角色时也不得默认画角色。不确定的性别或外貌不要自行补全。无人物画面不添加人物标签。只输出 tag，不要解释，不要中文，不超过 60 个 tag。'},{role:'user',content:`画面描述：${scene}${look?'\n已点名人物的可选参考：\n'+look:''}`}],{max_tokens:300,temperature:.2});
+    const t=clean(r).replace(/\n/g,', ').replace(/^tags?[:：]\s*/i,'');return /[a-z]/i.test(t)?t:scene}catch(_){return scene}
 }
 async function naiImage(desc,c,raw,meta,options={}){
   const s={...S.settings};if(!s.naiKey)throw new Error('还没填 NovelAI 的 Token');

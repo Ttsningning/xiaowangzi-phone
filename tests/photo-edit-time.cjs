@@ -34,6 +34,19 @@ const w=dom.window,ev=x=>w.eval(x),check=(label,source)=>{assert.ok(ev(source),l
  await assert.rejects(ev('naiImage("unused",c,false,{}, {mode:"raw",prompt:"x",negative_prompt:"",seed:"-1"})'),/request inspected/);check('empty negative stays empty and random seed ignores global fixed seed','sentRequest.body.parameters.negative_prompt===""&&Number.isInteger(sentRequest.body.parameters.seed)&&sentRequest.body.parameters.seed>=0&&sentRequest.body.parameters.seed<=4294967295');
  ev('var ap=S.album.photos.find(p=>p.msgId===image.id);ksPhotoId=ap.id;ksRenderAlbum();[...document.querySelectorAll("[data-ks=photo-version]")].find(b=>b.dataset.version===ap.versions[0].id).click()');await new Promise(r=>setTimeout(r,30));check('restoring original album version clears image-specific overrides','!image.data.photoEdit&&image.data.generation.seed===0');
  ev('[...document.querySelectorAll("[data-ks=photo-version]")].find(b=>b.dataset.version===ap.versions[1].id).click()');await new Promise(r=>setTimeout(r,30));check('restoring edited album version restores that versions prompt config','image.data.photoEdit.seed==="123"&&image.data.photoEdit.mode==="raw"');
+ // Translation must not inject unrelated user identity into NAI prompts.
+ ev(`var savedCallAPI=callAPI;var tagCalls=0,tagMessages;S.settings.baseUrl='https://example.test/v1';S.settings.apiKey='test';c.name='橘子';c.look='黑发蓝眼男性';S.user.name='宁宁';S.user.look='粉金长发女性';callAPI=async(messages)=>{tagCalls++;tagMessages=messages;return '1boy, silver hair, green eyes'};`);
+ assert.equal(await ev('toTags("1.5::1boy::, silver hair, green eyes",c)'), '1.5::1boy::, silver hair, green eyes');
+ check('English NAI tags bypass AI translation and identity references','tagCalls===0');
+ await ev('toTags("一个银发绿眼的男人站在窗边",c)');
+ check('unnamed subject receives no user or character appearance','!JSON.stringify(tagMessages).includes("粉金长发")&&!JSON.stringify(tagMessages).includes("黑发蓝眼")');
+ await ev('toTags("橘子穿着西装，银发绿眼",c)');
+ check('named character only gets own fallback reference with explicit scene priority','tagMessages[1].content.includes("黑发蓝眼")&&!tagMessages[1].content.includes("粉金长发")&&tagMessages[0].content.includes("最高优先级")');
+ await ev('toTags("宁宁与橘子一起散步",c)');
+ check('explicit couple scene can reference both people','tagMessages[1].content.includes("粉金长发")&&tagMessages[1].content.includes("黑发蓝眼")');
+ await ev('toTags("月光下空荡的森林",c)');
+ check('scenery has no identity reference and forbids invented subjects','!tagMessages[1].content.includes("外貌参考")&&tagMessages[0].content.includes("无人物画面不添加人物标签")');
+ ev('callAPI=savedCallAPI');
  // Role-specific time controls also cover context helpers and proactive text.
  ev(`var other={...structuredClone(c),id:'clock-other',name:'另一位角色',timeAware:false};S.chars.push(other);var T2=threadOf(other.id);T.msgs=[{id:'clock1',role:'user',mode:'online',content:'你好',ts:Date.now()-7200000},{id:'clock2',role:'assistant',who:c.id,mode:'online',content:'我在',ts:Date.now()-3600000}];T.mem={summary:'',upTo:0};T2.msgs=structuredClone(T.msgs);T2.mem={summary:'',upTo:0};S.settings.timeAware=false;c.timeAware=true;var fixedNow=Date.UTC(2026,10,16,6,37,21);`);
  check('role on overrides global off; separate off role stays off','JSON.stringify(buildPrompt(T,"online","",fixedNow)).includes("【现在的时间】")&&!JSON.stringify(buildPrompt(T2,"online","",fixedNow)).includes("【现在的时间】")');
