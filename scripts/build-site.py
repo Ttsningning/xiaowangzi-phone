@@ -6,7 +6,7 @@ dist = root / 'dist'
 if dist.exists():
     shutil.rmtree(dist)
 dist.mkdir()
-for name in ['index.html', 'world-market.js', 'world-market.css', 'market-trades.js', 'treasure.js', 'treasure.css', 'keepsakes.js', 'keepsakes.css', 'companion.js', 'chat-reset.js', 'companion.css', 'sw.js',
+for name in ['index.html', 'world-market.js', 'world-market.css', 'market-trades.js', 'treasure.js', 'treasure.css', 'keepsakes.js', 'keepsakes.css', 'companion.js', 'star-library.js', 'star-library.css', 'chat-reset.js', 'companion.css', 'sw.js',
              'manifest.json', 'icon.png', 'icon-prince-moon.png',
              'icon-prince-planet.png', '.nojekyll', 'games', 'themes']:
     source = root / name

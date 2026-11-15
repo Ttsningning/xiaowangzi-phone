@@ -648,6 +648,7 @@ input,textarea,select{font:inherit;color:var(--text)}
 
 </style>
 <link rel="stylesheet" href="keepsakes.css">
+<link rel="stylesheet" href="star-library.css">
 <link rel="stylesheet" href="companion.css">
 </head>
 <body>
@@ -795,6 +796,12 @@ input,textarea,select{font:inherit;color:var(--text)}
     </div>
   </section>
 
+  <!-- 星页书房 -->
+  <section class="app" id="app-starLibrary">
+    <header><button class="hbtn" data-back>‹ 返回</button><div class="title">星页书房</div><span class="hbtn"></span></header>
+    <div class="body pad" id="starLibraryBody"></div>
+  </section>
+
   <!-- 设置 -->
   <section class="app" id="app-settings">
     <header><button class="hbtn" data-back>‹ 返回</button><div class="title">设置</div><span class="hbtn"></span></header>
@@ -874,8 +881,16 @@ input,textarea,select{font:inherit;color:var(--text)}
         <div class="two"><div class="field"><label>采样器</label><select data-s="naiSampler"><option value="k_euler_ancestral">Euler Ancestral</option><option value="k_euler">Euler</option><option value="k_dpmpp_2s_ancestral">DPM++ 2S Ancestral</option><option value="k_dpmpp_2m_sde">DPM++ 2M SDE</option><option value="k_dpmpp_2m">DPM++ 2M</option><option value="k_dpmpp_sde">DPM++ SDE</option></select></div>
           <div class="field"><label>步数 / 引导</label><div class="two"><input data-s="naiSteps" type="number" min="1" max="50"><input data-s="naiScale" type="number" step="0.5" min="0" max="10"></div></div></div>
         <div class="two"><div class="field"><label>噪声调度</label><select data-s="naiSchedule"><option value="auto">自动（沿用模型默认）</option><option value="native">Native</option><option value="karras">Karras</option><option value="exponential">Exponential</option><option value="polyexponential">Polyexponential</option></select></div><div class="field"><label>种子 Seed</label><input data-s="naiSeed" inputmode="numeric" placeholder="留空或 -1 = 每次随机"><div class="hint">固定种子填 0—4294967295 的整数。</div></div></div>
-        <div class="field"><label>固定正面词（画师串、画风，每张图都带，英文 tag）</label><textarea data-s="naiPos" placeholder="artist:xxx, best quality, amazing quality, very aesthetic, absurdres"></textarea></div>
-        <div class="field"><label>负面词</label><textarea data-s="naiNeg"></textarea></div>
+        <div class="card glass" id="naiPresetManager">
+          <h3>生图提示词预设</h3>
+          <div class="hint">每套预设独立保存正面词、画师串和负面词；切换后立即生效。旧提示词会自动保留为「原有预设」。</div>
+          <div class="field"><label>选择已保存预设</label><select id="naiPresetSelect"></select></div>
+          <div class="field"><label>预设名称</label><input id="naiPresetName" maxlength="80"></div>
+          <div class="field"><label>正面提示词</label><textarea id="naiPresetPositive" rows="3" placeholder="masterpiece, best quality..."></textarea></div>
+          <div class="field"><label>画师串 / 风格串</label><textarea id="naiPresetArtist" rows="3" placeholder="artist:xxx, painterly..."></textarea></div>
+          <div class="field"><label>负面提示词</label><textarea id="naiPresetNegative" rows="3"></textarea></div>
+          <div class="btns"><button class="btn pri" id="naiPresetNew">＋ 新建</button><button class="btn" id="naiPresetDuplicate">复制当前</button><button class="btn" id="naiPresetDelete">删除当前</button></div>
+        </div>
         <div class="hint" style="margin-bottom:12px">NAI 只认英文 tag：TA 拍照、剧情配图时，会先用主体 AI 把画面翻成 tag 再交给 NAI。</div>
         </div>
         <div class="field"><label>生图测试（写一句想看的画面，中文也行）</label><input id="imgTestText" value="星空下的小王子和狐狸，坐在玫瑰旁边"></div>
@@ -1026,10 +1041,10 @@ const SVG={
   preset:'<svg viewBox="0 0 24 24"><path d="M5 5v14M12 5v14M19 5v14"/><circle cx="5" cy="9" r="2" fill="#0b1a33"/><circle cx="12" cy="15" r="2" fill="#0b1a33"/><circle cx="19" cy="8" r="2" fill="#0b1a33"/></svg>',
   games:'<svg viewBox="0 0 24 24"><path d="M5 4.5h10.5a2 2 0 0 1 2 2V20H7a2 2 0 0 1-2-2z"/><path d="M5 18a2 2 0 0 1 2-2h10.5"/><path d="M10.5 7.5l1 2.1 2.2.3-1.6 1.5.4 2.2-2-1.1-2 1.1.4-2.2-1.6-1.5 2.2-.3z"/></svg>',
   settings:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg>'};
-const APPS=[{id:'wallet',name:'钱包'},{id:'market',name:'万界杂货铺'},{id:'chat',name:'消息'},{id:'story',name:'见面'},{id:'memory',name:'记忆'},{id:'char',name:'角色'},{id:'theme',name:'美化'},{id:'world',name:'世界书'},{id:'preset',name:'预设'},{id:'games',name:'游戏'},{id:'peek',name:'查手机'},{id:'shop',name:'淘宝'},{id:'food',name:'美团'},{id:'settings',name:'设置'}];
+const APPS=[{id:'starLibrary',name:'星页书房'},{id:'wallet',name:'钱包'},{id:'market',name:'万界杂货铺'},{id:'chat',name:'消息'},{id:'story',name:'见面'},{id:'memory',name:'记忆'},{id:'char',name:'角色'},{id:'theme',name:'美化'},{id:'world',name:'世界书'},{id:'preset',name:'预设'},{id:'games',name:'游戏'},{id:'peek',name:'查手机'},{id:'shop',name:'淘宝'},{id:'food',name:'美团'},{id:'settings',name:'设置'}];
 const DOCK=['chat','story','memory','settings'];
 const GAMES=[{id:'denglin',name:'登临',sub:'范德林谋杀案 · 新婚寡妇 × 嫉恶如仇的探员。她有无懈可击的不在场证明，你有一整夜。',src:'games/denglin.html',cover:'games/denglin-cover.jpg'},{id:'2048',name:'2048',sub:'小王子陪你凑 2048，从一颗星星合成到月亮。五套皮肤：小王子、粉色毛绒、红格子田园、金棕酒馆、珍珠玫瑰。',src:'games/2048.html',cover:'games/2048-cover.jpg'}];
-const appIcon=id=>{const c=S.theme.icons[id],p=curPack().icons?.[id];return c?`<div class="ico"><img src="${c}" alt=""></div>`:p?`<div class="ico pk"><img src="${p}" alt=""></div>`:`<div class="ico">${SVG[id]}</div>`};
+const appIcon=id=>{const c=S.theme.icons[id],p=curPack().icons?.[id]||(id==='starLibrary'?'themes/prince/deco/i-book.webp':null);return id==='starLibrary'&&!c&&typeof starArt==='function'?`<div class="ico">${starArt('home',80)}</div>`:c?`<div class="ico"><img src="${c}" alt=""></div>`:p?`<div class="ico pk"><img src="${p}" alt=""></div>`:`<div class="ico">${SVG[id]}</div>`};
 const avHTML=(who,cls='av')=>{const p=who==='char'?S.char:S.user;return p.avatar?`<img class="${cls}" src="${p.avatar}">`:`<div class="${cls}">${esc((p.name||'?').slice(0,1))}</div>`};
 
 /* ========== 主屏 & 主题 ========== */
@@ -1065,7 +1080,7 @@ const DEFAULT_HOME=()=>[
   {id:uid(),type:'w',kind:'clock',w:4,h:1},
   {id:uid(),type:'w',kind:'ta',w:2,h:2},
   {id:uid(),type:'w',kind:'days',w:2,h:2},
-  {id:uid(),type:'app',app:'char'},{id:uid(),type:'app',app:'world'},{id:uid(),type:'app',app:'preset'},{id:uid(),type:'app',app:'theme'},{id:uid(),type:'app',app:'games'},
+  {id:uid(),type:'app',app:'char'},{id:uid(),type:'app',app:'world'},{id:uid(),type:'app',app:'preset'},{id:uid(),type:'app',app:'starLibrary'},{id:uid(),type:'app',app:'theme'},{id:uid(),type:'app',app:'games'},
   {id:uid(),type:'w',kind:'dice',w:1,h:1},
   {id:uid(),type:'app',app:'peek'},{id:uid(),type:'app',app:'shop'},{id:uid(),type:'app',app:'food'}];
 const dayKey=()=>new Date().toDateString();
@@ -1648,7 +1663,7 @@ $('#gameClose').onclick=()=>{$('#gameView').classList.remove('open');const f=$('
 /* ========== App 页面栈 ========== */
 const STACK=[];
 document.addEventListener('click',e=>{const o=e.target.closest('[data-open]');if(o&&!editing())openApp(o.dataset.open);if(e.target.closest('[data-back]'))popApp()});
-const RENDER={world:()=>{wb.book=wb.entry=null;wbRender()},preset:()=>{ps.edit=null;psRender()},games:renderGames,chat:renderChat,story:renderStory,memory:renderMemory,char:renderChar,theme:renderTheme,settings:renderSettings,msgs:()=>renderMsgs(),diary:renderDiary,peek:renderPeek,shop:renderShop,food:renderFood};
+const RENDER={starLibrary:()=>starRender(),world:()=>{wb.book=wb.entry=null;wbRender()},preset:()=>{ps.edit=null;psRender()},games:renderGames,chat:renderChat,story:renderStory,memory:renderMemory,char:renderChar,theme:renderTheme,settings:renderSettings,msgs:()=>renderMsgs(),diary:renderDiary,peek:renderPeek,shop:renderShop,food:renderFood};
 function openApp(id){
   if(id==='chat'&&!STACK.length&&!openApp._direct)id='msgs';openApp._direct=false;
   const el=$('#app-'+id);if(!el)return;
@@ -1657,8 +1672,8 @@ function openApp(id){
   $$('.app:not(#gameView)').forEach(a=>a.classList.toggle('open',STACK.includes(a.id.slice(4))));
   RENDER[id]?.();if(id==='chat')clearUnread(curT());underColor();
 }
-function popApp(){const id=STACK.pop();if(id){$('#app-'+id)?.classList.remove('open');if(id==='diary')afterDiary();if(id==='peek')afterPeek()}const top=STACK.at(-1);if(top)RENDER[top]?.();else renderHome();underColor()}
-function closeApps(){STACK.length=0;$$('.app:not(#gameView)').forEach(a=>a.classList.remove('open'));renderHome();underColor()}
+function popApp(){if(STACK.at(-1)==='starLibrary')starFlushReading().catch(starError);const id=STACK.pop();if(id){$('#app-'+id)?.classList.remove('open');if(id==='diary')afterDiary();if(id==='peek')afterPeek()}const top=STACK.at(-1);if(top)RENDER[top]?.();else renderHome();underColor()}
+function closeApps(){if(STACK.includes('starLibrary'))starFlushReading().catch(starError);STACK.length=0;$$('.app:not(#gameView)').forEach(a=>a.classList.remove('open'));renderHome();underColor()}
 function openThread(tid){const T=S.threads.find(t=>t.id===tid);if(!T)return;S.state.cur=tid;save('state');openApp._direct=true;openApp('chat')}
 
 /* ========== 锁屏 ========== */
@@ -2674,8 +2689,44 @@ $$('[data-img]').forEach(b=>{
   longPress(b,()=>{S.theme[b.dataset.img]='';save('theme');applyTheme();renderTheme();toast('已恢复默认')});
 });
 
+/* Image prompt presets. Legacy fields remain synced for existing generation code. */
+function naiPresetsInit(){
+  const st=S.settings;
+  if(!Array.isArray(st.naiPresets)||!st.naiPresets.length){
+    st.naiPresets=[{id:'legacy',name:'原有预设',positive:st.naiPos||'',artist:'',negative:st.naiNeg||''}];
+    st.naiPresetActive='legacy';save('settings');
+  }
+  if(!st.naiPresets.some(p=>p.id===st.naiPresetActive))st.naiPresetActive=st.naiPresets[0].id;
+  naiPresetsSync();
+}
+function naiPresetsSync(){
+  const st=S.settings,p=st.naiPresets?.find(p=>p.id===st.naiPresetActive);
+  if(!p)return;
+  st.naiPos=[p.positive,p.artist].filter(Boolean).join(', ');
+  st.naiNeg=p.negative||'';
+}
+function naiPresetRender(){
+  naiPresetsInit();const st=S.settings,p=st.naiPresets.find(p=>p.id===st.naiPresetActive);
+  const sel=$('#naiPresetSelect');if(!sel)return;
+  sel.innerHTML=st.naiPresets.map(x=>'<option value="'+esc(x.id)+'">'+esc(x.name)+'</option>').join('');
+  sel.value=p.id;$('#naiPresetName').value=p.name;$('#naiPresetPositive').value=p.positive||'';
+  $('#naiPresetArtist').value=p.artist||'';$('#naiPresetNegative').value=p.negative||'';
+  $('#naiPresetDelete').disabled=st.naiPresets.length===1;
+}
+$('#naiPresetSelect').addEventListener('change',e=>{S.settings.naiPresetActive=e.target.value;naiPresetsSync();save('settings');naiPresetRender()});
+for(const [id,key] of [['naiPresetName','name'],['naiPresetPositive','positive'],['naiPresetArtist','artist'],['naiPresetNegative','negative']]){
+  $('#'+id).addEventListener('input',e=>{
+    const p=S.settings.naiPresets.find(p=>p.id===S.settings.naiPresetActive);if(!p)return;
+    p[key]=e.target.value;naiPresetsSync();save('settings');
+    if(key==='name'){$('#naiPresetSelect').selectedOptions[0].textContent=p.name||'未命名预设'}
+  });
+}
+$('#naiPresetNew').onclick=()=>{naiPresetsInit();const p={id:uid(),name:'新预设',positive:'',artist:'',negative:''};S.settings.naiPresets.push(p);S.settings.naiPresetActive=p.id;naiPresetsSync();save('settings');naiPresetRender()};
+$('#naiPresetDuplicate').onclick=()=>{naiPresetsInit();const old=S.settings.naiPresets.find(p=>p.id===S.settings.naiPresetActive);const p={...old,id:uid(),name:old.name+' · 副本'};S.settings.naiPresets.push(p);S.settings.naiPresetActive=p.id;naiPresetsSync();save('settings');naiPresetRender()};
+$('#naiPresetDelete').onclick=async()=>{naiPresetsInit();if(S.settings.naiPresets.length<2)return toast('至少保留一套预设');if(await actionSheet([{label:'删除这套预设',danger:true}],'确定删除当前生图预设？其他预设不会受影响。')!==0)return;S.settings.naiPresets=S.settings.naiPresets.filter(p=>p.id!==S.settings.naiPresetActive);S.settings.naiPresetActive=S.settings.naiPresets[0].id;naiPresetsSync();await save('settings');naiPresetRender()};
+
 /* ========== 设置 App ========== */
-function renderSettings(){renderGhStat();$$('[data-s]').forEach(el=>{const v=S.settings[el.dataset.s];if(el.type==='checkbox')el.checked=!!v;else el.value=v??''});updShow()}
+function renderSettings(){naiPresetsInit();renderGhStat();$$('[data-s]').forEach(el=>{const v=S.settings[el.dataset.s];if(el.type==='checkbox')el.checked=!!v;else el.value=v??''});updShow();naiPresetRender()}
 $$('[data-s]').forEach(el=>el.addEventListener('change',()=>{const k=el.dataset.s;S.settings[k]=el.type==='checkbox'?el.checked:el.type==='number'?+el.value:el.value.trim();save('settings');updShow()}));
 $('#testApi').onclick=async()=>{toast('测试中…',8000);try{const r=await callAPI([{role:'user',content:'只回复四个字：连接成功'}],{max_tokens:30});toast('✓ '+clean(r).slice(0,40))}catch(e){toast(e.message,5000)}};
 $('#fetchModels').onclick=async()=>{
@@ -2806,11 +2857,12 @@ function underColor(){
 <script src="keepsakes.js"></script>
 <script src="companion.js"></script>
 <script src="chat-reset.js"></script>
+<script src="star-library.js"></script>
 <script>
 /* ========== 启动 ========== */
 (async()=>{
   try{await load()}catch(e){toast('本地存储打不开：'+e.message,6000);for(const k in DEFAULTS)S[k]??=structuredClone(DEFAULTS[k])}
-  wmInit();presetList();syncUnread();fitPhone();tick();applyTheme();renderHome();if(typeof foxInit==='function')foxInit();
+  wmInit();if(typeof starInit==='function')starInit();presetList();syncUnread();fitPhone();tick();applyTheme();renderHome();if(typeof foxInit==='function')foxInit();
   if(!S.settings.showLock)$('#lock').classList.add('hide');
   setTimeout(checkProactive,2500);
 })();
