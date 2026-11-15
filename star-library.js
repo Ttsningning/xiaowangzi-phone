@@ -4,6 +4,7 @@ const starEsc=s=>esc(String(s??''));
 const starBook=()=>S.starLibrary.books.find(b=>b.id===S.starLibrary.active);
 const starBody=()=>$('#starLibraryBody');
 function starSave(){return save('starLibrary')}
+function starEnsure(){if(!S.starLibrary)S.starLibrary=structuredClone(DEFAULTS.starLibrary);S.starLibrary.books||=[];return S.starLibrary}
 function starSnapshot(b,c,reason){
   c.history||=[];c.history.push({at:new Date().toISOString(),reason,text:c.text||'',title:c.title});
   if(c.history.length>30)c.history.shift();
@@ -17,9 +18,9 @@ function starContext(){const c=starPartner();return c?'你正在以小说搭档�
 function starOptions(){return '<option value="">独立 AI 写作助手</option>'+S.chars.map(c=>'<option value="'+starEsc(c.id)+'">'+starEsc(c.name)+'</option>').join('')}
 function starRender(){
   const root=starBody();if(!root)return;
-  const b=starBook(),lib=S.starLibrary;
+  const lib=starEnsure(),b=starBook();
   if(!b){
-    root.innerHTML='<div class="card glass"><h2>✦ 星页书房</h2><p>一起读，一起写，把故事装订成书。</p><div class="btns"><button class="btn pri" data-star="create">一起写 · 新故事</button><button class="btn" data-star="import">一起读 · 导入 TXT</button></div><input id="starFile" type="file" accept=".txt,text/plain" hidden></div>'+
+    root.innerHTML='<div class="card glass"><h2>✦ 星页书房</h2><p>一起读，一起写，把故事装订成书。</p><div class="btns"><button class="btn pri" data-star="create">一起写 · 新故事</button><button class="btn" data-star="import">一起读 · 导入 TXT</button><button class="btn" data-star="importBackup">恢复作品备份</button></div><input id="starFile" type="file" accept=".txt,text/plain" hidden><input id="starBackupFile" type="file" accept=".json,application/json" hidden></div>'+
     '<div class="card glass"><h3>我的书架</h3>'+lib.books.map(x=>'<button class="btn" style="display:block;width:100%;margin:8px 0;text-align:left" data-star="open" data-id="'+starEsc(x.id)+'">'+starEsc(x.title)+' · '+(x.chapters||[]).length+' 章</button>').join('')+'<p class="hint">作品只保存在这台小手机里，请定期导出备份。</p></div>';
     return;
   }
@@ -41,13 +42,14 @@ async function starAI(messages,max_tokens=1600){
   return clean(await callAPI(messages,{...(c?{char:c}:{}),max_tokens,temperature:.8}));
 }
 async function starAction(action,el){
-  const lib=S.starLibrary,b=starBook();
+  const lib=starEnsure(),b=starBook();
   if(action==='create'){
     const title=prompt('新故事的名字','未命名故事');if(title===null)return;
     const x={id:uid(),title:title.trim().slice(0,100)||'未命名故事',notes:'',ideas:'',chapters:[],chapter:0,tab:'outline',discussion:[],chatOpen:false};
     lib.books.unshift(x);lib.active=x.id;await starSave();starRender();return;
   }
   if(action==='import'){$('#starFile')?.click();return}
+  if(action==='importBackup'){$('#starBackupFile')?.click();return}
   if(action==='open'){lib.active=el.dataset.id;await starSave();starRender();return}
   if(action==='back'){lib.active='';await starSave();starRender();return}
   if(!b)return;
@@ -104,6 +106,19 @@ document.addEventListener('click',e=>{const el=e.target.closest('[data-star]');i
 document.addEventListener('change',async e=>{
   if(e.target.id==='starPartner'){S.starLibrary.partner=e.target.value;await starSave()}
   if(e.target.id==='starChapter'){const b=starBook();if(b){b.chapter=+e.target.value;await starSave();starRender()}}
+  if(e.target.id==='starBackupFile'){
+    const f=e.target.files?.[0];if(!f)return;
+    try{
+      if(f.size>8*1024*1024)throw Error('备份文件不能超过 8MB');
+      const d=JSON.parse(await f.text());
+      if(d.format!=='star-library-book'||d.version!==1||!d.book||!Array.isArray(d.book.chapters))throw Error('不是有效的星页书房作品备份');
+      const src=d.book;
+      if(src.chapters.length>500||src.chapters.some(c=>typeof c.title!=='string'||typeof c.text!=='string'))throw Error('备份章节数据异常');
+      const b={id:uid(),title:String(src.title||'恢复的作品').slice(0,100),notes:String(src.notes||''),ideas:String(src.ideas||''),chapters:src.chapters.map(c=>({title:c.title,text:c.text,history:Array.isArray(c.history)?c.history.slice(-30).filter(v=>v&&typeof v.text==='string'&&typeof v.title==='string'):[]})),chapter:0,tab:'outline',discussion:Array.isArray(src.discussion)?src.discussion.filter(x=>x&&['user','assistant'].includes(x.role)&&typeof x.text==='string').slice(-1000):[],chatOpen:false};
+      starEnsure().books.unshift(b);S.starLibrary.active=b.id;await starSave();starRender();toast('作品备份恢复成功');
+    }catch(err){toast('恢复失败：'+err.message,6000)}
+    e.target.value='';return;
+  }
   if(e.target.id==='starFile'){const f=e.target.files?.[0];if(!f)return;if(f.size>8*1024*1024)return toast('TXT 请先控制在 8MB 以内');const t=await f.text();const sections=t.split(/(?=^\s*(?:第[零一二三四五六七八九十百千万\d]+章|Chapter\s+\d+)\s*[^\n]*$)/gim).filter(x=>x.trim());const chapters=sections.length>1?sections.map((text,i)=>({title:text.trim().split(/\r?\n/)[0].slice(0,90)||'第'+(i+1)+'章',text:text.trim()})):[{title:'正文',text:t}];const b={id:uid(),title:f.name.replace(/\.txt$/i,''),notes:'',ideas:'',chapters,chapter:0,tab:'read',discussion:[],chatOpen:false};S.starLibrary.books.unshift(b);S.starLibrary.active=b.id;await starSave();starRender()}
 });
 document.addEventListener('input',e=>{const b=starBook();if(!b)return;if(e.target.id==='starNotes'){b.notes=e.target.value;starSave()}if(e.target.id==='starIdeas'){b.ideas=e.target.value;starSave()}});
