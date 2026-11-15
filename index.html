@@ -748,7 +748,7 @@ input,textarea,select{font:inherit;color:var(--text)}
           <div class="hint" id="caStat" style="margin-top:6px"></div></div>
         <div class="btns" style="margin-bottom:12px"><button class="btn" id="caFetch">拉取模型</button><button class="btn" id="caTest">测试连接</button></div>
         <div class="btns" id="charKeepsakes"><button class="btn" id="charMemory">记忆册</button><button class="btn" id="charAlbum">相簿</button></div>
-        <div class="btns" id="charBtns"><button class="btn pri" id="charChat">和TA聊天</button><button class="btn danger" id="charDel">删除角色</button></div>
+        <div class="btns" id="charBtns"><button class="btn pri" id="charChat">和TA聊天</button><button class="btn" id="charReset">重置聊天 · 从开场白开始</button><button class="btn danger" id="charDel">删除角色</button></div>
       </div>
       <div class="card glass" id="meCard">
         <h3>我</h3>
@@ -1716,7 +1716,7 @@ function cardBlock(c,label){
   if(c.mes_example)s+=`说话风格示例：\n${c.mes_example}\n`;return s;
 }
 function momentsFor(T,n=4){
-  const ids=T.members;const L=(S.moments||[]).filter(p=>p.who==='user'||ids.includes(p.who)).slice(0,n);if(!L.length)return '';
+  const ids=T.members;const L=(S.moments||[]).filter(p=>(!T.resetAt||p.ts>=T.resetAt)&&(p.who==='user'||ids.includes(p.who))).slice(0,n);if(!L.length)return '';
   const nm=w=>w==='user'?S.user.name:(charById(w)?.name||'');
   return L.map(p=>`- ${fmtTime(p.ts)} ${nm(p.who)}发了朋友圈：${p.text}${p.imgs?.length?`（配了${p.imgs.length}张图）`:''}${p.likes?.length?`；点赞：${p.likes.map(nm).join('、')}`:''}${p.comments?.length?`；评论：${p.comments.map(c=>`${nm(c.who)}${c.to?'回复'+nm(c.to):''}：${c.text}`).join(' / ')}`:''}`).join('\n');
 }
@@ -1875,6 +1875,7 @@ function parseLine(T,line,lastWho){
 }
 let busy=false,pending=null;
 async function generate(T,mode,extra,o={}){
+  if(typeof chatResetLocks!=='undefined'&&chatResetLocks.has(T.id))return;
   if(busy){if(!o.pro)pending={T,mode,extra};return}
   busy=true;if(!o.ts)setTyping(T,mode,true);
   try{
@@ -1921,6 +1922,7 @@ const chatSubText=T=>isGroup(T)?`${T.members.length+1} 人`:'在线';
 /* ========== 记忆整理 ========== */
 let summarizing=false;
 async function maybeSummarize(T,force){
+  if(typeof chatResetLocks!=='undefined'&&chatResetLocks.has(T.id))return;
   if(summarizing)return;
   const keep=force?6:12,cut=T.msgs.length-keep,un=T.msgs.length-T.mem.upTo;
   if((!force&&un<S.settings.summaryEvery)||cut<=T.mem.upTo){if(force)toast('最近的消息太少，还不需要整理');return}
@@ -2042,7 +2044,7 @@ const ci=$('#chatInput');
 ci.addEventListener('input',()=>{ci.style.height='auto';ci.style.height=Math.min(ci.scrollHeight,120)+'px';const has=!!ci.value.trim();$('#chatSend').textContent=has?'发送':'✦';$('#chatSend').classList.toggle('alt',!has)});
 ci.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing&&window.innerWidth>520){e.preventDefault();$('#chatSend').click()}});
 ci.addEventListener('focus',()=>$('#plusPanel').classList.remove('on'));
-function userSent(T){renderChat();clearTimeout(replyTimer);replyTimer=setTimeout(()=>generate(T,'online'),S.settings.replyDelay*1000)}
+function userSent(T){renderChat();clearTimeout(replyTimer);const session=T.sessionId;replyTimer=setTimeout(()=>{if(T.sessionId===session)generate(T,'online')},S.settings.replyDelay*1000)}
 $('#chatSend').onclick=()=>{
   const T=curT(),t=ci.value.trim();clearTimeout(replyTimer);
   if(!t){if(replyDrafts.has(T.id))return toast('写一句回复，再把引用一起发出去吧');const last=T.msgs.at(-1);generate(T,'online',last&&last.role==='user'?null:isGroup(T)?'群里有人主动开启了新话题':`${tName(T)}主动给${S.user.name}发了消息`);return}
@@ -2051,10 +2053,11 @@ $('#chatSend').onclick=()=>{
 $('#chatMore').onclick=async()=>{
   const T=curT(),grp=isGroup(T);
   const opts=[{label:'🌙 见面（线下剧情）',k:'story'},{label:'📖 长期记忆',k:'mem'}];
-  if(!grp)opts.push({label:'🔍 偷看TA的日记',k:'diary'},{label:'📱 查TA的手机',k:'peek'});
+  if(!grp){opts.push({label:'🔍 偷看TA的日记',k:'diary'},{label:'📱 查TA的手机',k:'peek'},{label:'↻ 重置聊天 · 从开场白开始',k:'reset'});if(S.chatResets?.[T.members[0]]?.length)opts.push({label:'恢复上次会话',k:'restore'})}
   if(grp)opts.push({label:'👥 群成员和群名',k:'grp'});
   opts.push({label:'🧹 清空这里的聊天和剧情',k:'clear',danger:true});
   const i=await actionSheet(opts,tName(T));if(i<0)return;const k=opts[i].k;
+  if(k==='reset'||k==='restore')return requestCharacterReset(T.members[0],k==='restore');
   if(k==='story')openApp('story');if(k==='mem'){if(typeof ksOpenMemory==='function')ksOpenMemory(T.members[0]);else openApp('memory')};if(k==='diary')openDiary(T.members[0]);if(k==='peek')openPeek(T.members[0]);
   if(k==='grp'){const r=await formSheet('群设置',[{k:'name',t:'text',l:'群名'},{k:'members',t:'multi',l:'群成员',opts:S.chars.map(c=>[c.id,c.name])}],{name:T.name,members:[...T.members]});
     if(r&&r.members?.length){const add=r.members.filter(x=>!T.members.includes(x));T.name=(r.name||'').trim();T.members=r.members;saveThreads();if(add.length)pushMsg(T,'online','event',`${S.user.name}邀请${add.map(x=>charById(x)?.name).join('、')}加入了群聊`);renderChat()}}
@@ -2075,7 +2078,7 @@ $('#plusPanel').addEventListener('click',async e=>{
   if(mm){if(mm._lp)return;const x=allMemes().find(k=>k.id===mm.dataset.meme);pushMsg(T,'online','user',x.name,{type:'sticker',data:{img:x.img}});$('#plusPanel').classList.remove('on');return userSent(T)}
   if(a){const k=a.dataset.pa;$('#plusPanel').classList.remove('on');
     if(k==='photo'){const f=await pickFile('image/*');if(!f)return;const img=await fileToImg(f,1024);const m=pushMsg(T,'online','user','',{type:'image',data:{img,caption:''}});renderChat();clearTimeout(replyTimer);
-      try{m.data.caption=await caption(img);saveMsgs(T)}catch(e){m.data.caption='（没看清这张照片）';toast('识图失败：'+e.message,4500)}userSent(T);return}
+      try{m.data.caption=await caption(img);saveMsgs(T)}catch(e){m.data.caption='（没看清这张照片）';toast('识图失败：'+e.message,4500)}if(T.msgs.includes(m))userSent(T);return}
     if(k==='voice'){const t=await editor('','想说的话（会变成一条语音）');if(t?.trim()){pushMsg(T,'online','user',t.trim(),{type:'voice'});userSent(T)}return}
     const rp=k==='rp',r=await formSheet(rp?'发红包':'转账',[{k:'amount',t:'text',l:`金额（零钱余额 ${esc(wmFmt(S.wallet.balance))}）`,ph:rp?'52.00':'520.00',num:1},{k:'note',t:'text',l:rp?'祝福语':'备注',ph:rp?'恭喜发财，大吉大利':'给你买奶茶'}],{});
     if(!r)return;const amt=+(+r.amount).toFixed(2);if(!(amt>0))return toast('金额不对哦');if(amt>S.wallet.balance)return toast('零钱不够啦');
@@ -2521,7 +2524,7 @@ $('#peekTitle').onclick=async()=>{if(S.chars.length<2)return;const k=await actio
 function openPeek(cid){peekChar=cid;openApp('peek')}
 function afterPeek(){
   if(!peekCaught)return;const c=charById(peekCaught.cid),T=threadOf(c.id);peekCaught=null;
-  setTimeout(()=>generate(T,'online',`${c.name}发现${S.user.name}偷偷翻了自己的手机（聊天记录、备忘录、搜索记录、相册、购物车都可能被看到了）。${c.name}主动给${S.user.name}发消息，用符合性格的方式反应——害羞、嘴硬、质问、心虚、调侃或者假装没事都可以。`,{pro:true}),4000+Math.random()*6000);
+  const session=T.sessionId;setTimeout(()=>T.sessionId===session&&generate(T,'online',`${c.name}发现${S.user.name}偷偷翻了自己的手机（聊天记录、备忘录、搜索记录、相册、购物车都可能被看到了）。${c.name}主动给${S.user.name}发消息，用符合性格的方式反应——害羞、嘴硬、质问、心虚、调侃或者假装没事都可以。`,{pro:true}),4000+Math.random()*6000);
 }
 /* ========== 订单通用 ========== */
 const money=v=>wmFmt(v);
@@ -2633,7 +2636,7 @@ async function writeDiary(c){
 }
 function afterDiary(){
   if(!diaryCaught)return;const {cid,d}=diaryCaught;diaryCaught=null;const T=threadOf(cid),c=charById(cid);
-  setTimeout(()=>generate(T,'online',`${c.name}发现${S.user.name}偷看了自己的日记（那篇是《${d.title||'今天'}》，里面写了：${d.text.slice(0,80)}……）。${c.name}主动给${S.user.name}发消息，用符合性格的方式反应——可能是害羞、嘴硬、质问、调侃或者假装没事。`,{pro:true}),4000+Math.random()*6000);
+  const session=T.sessionId;setTimeout(()=>T.sessionId===session&&generate(T,'online',`${c.name}发现${S.user.name}偷看了自己的日记（那篇是《${d.title||'今天'}》，里面写了：${d.text.slice(0,80)}……）。${c.name}主动给${S.user.name}发消息，用符合性格的方式反应——可能是害羞、嘴硬、质问、调侃或者假装没事。`,{pro:true}),4000+Math.random()*6000);
 }
 
 /* ========== 美化 App ========== */
@@ -2802,6 +2805,7 @@ function underColor(){
 <script src="treasure.js"></script>
 <script src="keepsakes.js"></script>
 <script src="companion.js"></script>
+<script src="chat-reset.js"></script>
 <script>
 /* ========== 启动 ========== */
 (async()=>{

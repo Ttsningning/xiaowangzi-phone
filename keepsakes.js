@@ -51,7 +51,7 @@ async function ksEditMemory(id,photoId){
 async function ksDraftMemories(cid){
   const state=S.keepsakes,book=ksBook(cid),c=charById(cid),lock='memory:'+cid;if(ksBusy.has(lock))return;ksBusy.add(lock);ksRenderMemory();
   try{
-    const sources=S.threads.filter(t=>t.members.includes(cid)).flatMap(t=>t.msgs.filter(m=>m.role!=='event').slice(-60).map(m=>({tid:t.id,id:m.id,who:m.role==='user'?S.user.name:charById(m.who||t.members[0])?.name||'TA',mode:m.mode,text:m.content,at:m.ts}))).slice(-160);
+    const sources=S.threads.filter(t=>t.members.includes(cid)).flatMap(t=>t.msgs.filter(m=>m.role!=='event'&&(!threadOf(cid).resetAt||m.ts>=threadOf(cid).resetAt)).slice(-60).map(m=>({tid:t.id,id:m.id,who:m.role==='user'?S.user.name:charById(m.who||t.members[0])?.name||'TA',mode:m.mode,text:m.content,at:m.ts}))).slice(-160);
     if(!sources.length)throw Error('先与 TA 留下一点共同经历，再来整理');
     const out=await callAPI([{role:'system',content:'你为一个角色整理真实发生过的回忆候选卡片。只依据给出的对话、既有摘要和礼物记录，不得编造关系、事件和约定，不得重复已收录内容。生成1—6条，只输出 JSON {"cards":[{"kind":"about/event/gift/promise","title":"标题","text":"准确完整的事实","date":"故事中的时间或留空","sourceTid":"原对话tid","sourceMsgIds":["原消息id"]}]}。每条必须引用同一会话内实际存在的消息。不要把尚未发生的期待写成已发生。'},{role:'user',content:`角色：${JSON.stringify({name:c.name,description:c.description,personality:c.personality})}\n用户：${S.user.name}\n已收录：${JSON.stringify(book.cards.map(x=>({title:x.title,text:x.text})))}\n对话：${JSON.stringify(sources)}\n已有私聊摘要：${S.threads.find(t=>!isGroup(t)&&t.members[0]===cid)?.mem.summary||''}`}],{char:c,max_tokens:2800,temperature:.3});
     if(S.keepsakes!==state||!charById(cid))return;

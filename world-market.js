@@ -164,7 +164,7 @@ function wmInit(){
 }
 function wmWorld(){return (S.world.books||[]).filter(b=>b.enabled).flatMap(b=>b.entries.filter(e=>e.enabled).map(e=>e.content)).join('\n').slice(0,10000)}
 function wmContext(){return `已采用的平台汇率（沿用，不随卖家情绪改变）：${JSON.stringify(S.market.rates||{})}。用户：${S.user.name}；身份：${S.user.persona||'未设定'}；货币：${S.wallet.currency}。世界书：\n${wmWorld()}`}
-function wmPrompt(T){return `\n【背包与信物】合适时可送一件有意义的物品，单独写 [信物:名称:描述]，系统会加入用户背包；不要频繁送。信物只能换物，不可变现。${S.wallet?.aware?`\n用户允许你知道钱包：余额 ${wmFmt(S.wallet.balance)}；最近流水：${S.wallet.ledger.slice(0,5).map(x=>x.title+' '+wmFmt(x.amount)).join('；')}。可以自然关心，不要控制或指责消费。`:''}\n`}
+function wmPrompt(T){return `\n【背包与信物】合适时可送一件有意义的物品，单独写 [信物:名称:描述]，系统会加入用户背包；不要频繁送。信物只能换物，不可变现。${S.wallet?.aware?`\n用户允许你知道钱包：余额 ${wmFmt(S.wallet.balance)}；最近流水：${S.wallet.ledger.filter(x=>!T.resetAt||x.at>=T.resetAt).slice(0,5).map(x=>x.title+' '+wmFmt(x.amount)).join('；')}。可以自然关心，不要控制或指责消费。`:''}\n`}
 function wmReceiveTokens(T,text,who){return text.replace(/\[信物[:：]([^:：\]\n]{1,80})[:：]([^\]\n]{1,600})\]/g,(_,name,desc)=>{const c=charById(who||T.members[0]);S.wallet.bag.push({id:uid(),name:name.trim(),desc:desc.trim(),kind:'token',qty:1,from:c?.name||'TA',at:Date.now(),source:'gift',charId:c?.id});save('wallet');return `🎁 ${c?.name||'TA'}送给你「${name.trim()}」：${desc.trim()}（已放入背包）`;});}
 function wmCard(title,body){return `<div class="card glass"><h3>${esc(title)}</h3>${body}</div>`}
 function wmBtn(action,label,attrs=''){return `<button class="btn" data-wm="${action}" ${attrs}>${label}</button>`}
