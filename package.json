@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "build": "python3 scripts/build-site.py",
-    "test": "node tests/wallet-market.cjs && node tests/denglin-assets.cjs && node tests/api-settings.cjs && node tests/market-social.cjs && node tests/market-stall-family.cjs && node tests/chat-quotes-photos.cjs && node tests/keepsakes.cjs && node tests/desktop-keepsakes.cjs && node tests/companion.cjs && node tests/market-navigation.cjs && node tests/market-checkout-treasure.cjs && node tests/photo-edit-time.cjs && node tests/chat-reset.cjs && node tests/star-library.cjs"
+    "test": "node tests/wallet-market.cjs && node tests/denglin-assets.cjs && node tests/api-settings.cjs && node tests/market-social.cjs && node tests/market-stall-family.cjs && node tests/chat-quotes-photos.cjs && node tests/keepsakes.cjs && node tests/desktop-keepsakes.cjs && node tests/companion.cjs && node tests/market-navigation.cjs && node tests/market-checkout-treasure.cjs && node tests/photo-edit-time.cjs && node tests/chat-reset.cjs && node tests/star-library.cjs && node tests/visitors.cjs"
   },
   "devDependencies": {
     "jsdom": "31.0.0",

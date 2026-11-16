@@ -649,6 +649,7 @@ input,textarea,select{font:inherit;color:var(--text)}
 </style>
 <link rel="stylesheet" href="keepsakes.css">
 <link rel="stylesheet" href="star-library.css">
+<link rel="stylesheet" href="visitors.css">
 <link rel="stylesheet" href="companion.css">
 </head>
 <body>
@@ -797,6 +798,7 @@ input,textarea,select{font:inherit;color:var(--text)}
   </section>
 
   <!-- 星页书房 -->
+  <section class="app" id="app-visitors"><header><button class="hbtn" data-back>‹ 返回</button><div class="title">万界来客</div><span class="hbtn"></span></header><div class="body pad" id="visitorsBody"></div></section>
   <section class="app" id="app-starLibrary">
     <header><button class="hbtn" data-back>‹ 返回</button><div class="title">星页书房</div><span class="hbtn"></span></header>
     <div class="body pad" id="starLibraryBody"></div>
@@ -1041,10 +1043,10 @@ const SVG={
   preset:'<svg viewBox="0 0 24 24"><path d="M5 5v14M12 5v14M19 5v14"/><circle cx="5" cy="9" r="2" fill="#0b1a33"/><circle cx="12" cy="15" r="2" fill="#0b1a33"/><circle cx="19" cy="8" r="2" fill="#0b1a33"/></svg>',
   games:'<svg viewBox="0 0 24 24"><path d="M5 4.5h10.5a2 2 0 0 1 2 2V20H7a2 2 0 0 1-2-2z"/><path d="M5 18a2 2 0 0 1 2-2h10.5"/><path d="M10.5 7.5l1 2.1 2.2.3-1.6 1.5.4 2.2-2-1.1-2 1.1.4-2.2-1.6-1.5 2.2-.3z"/></svg>',
   settings:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg>'};
-const APPS=[{id:'starLibrary',name:'星页书房'},{id:'wallet',name:'钱包'},{id:'market',name:'万界杂货铺'},{id:'chat',name:'消息'},{id:'story',name:'见面'},{id:'memory',name:'记忆'},{id:'char',name:'角色'},{id:'theme',name:'美化'},{id:'world',name:'世界书'},{id:'preset',name:'预设'},{id:'games',name:'游戏'},{id:'peek',name:'查手机'},{id:'shop',name:'淘宝'},{id:'food',name:'美团'},{id:'settings',name:'设置'}];
+const APPS=[{id:'visitors',name:'万界来客'},{id:'starLibrary',name:'星页书房'},{id:'wallet',name:'钱包'},{id:'market',name:'万界杂货铺'},{id:'chat',name:'消息'},{id:'story',name:'见面'},{id:'memory',name:'记忆'},{id:'char',name:'角色'},{id:'theme',name:'美化'},{id:'world',name:'世界书'},{id:'preset',name:'预设'},{id:'games',name:'游戏'},{id:'peek',name:'查手机'},{id:'shop',name:'淘宝'},{id:'food',name:'美团'},{id:'settings',name:'设置'}];
 const DOCK=['chat','story','memory','settings'];
 const GAMES=[{id:'denglin',name:'登临',sub:'范德林谋杀案 · 新婚寡妇 × 嫉恶如仇的探员。她有无懈可击的不在场证明，你有一整夜。',src:'games/denglin.html',cover:'games/denglin-cover.jpg'},{id:'2048',name:'2048',sub:'小王子陪你凑 2048，从一颗星星合成到月亮。五套皮肤：小王子、粉色毛绒、红格子田园、金棕酒馆、珍珠玫瑰。',src:'games/2048.html',cover:'games/2048-cover.jpg'}];
-const appIcon=id=>{const c=S.theme.icons[id],p=curPack().icons?.[id]||(id==='starLibrary'?'themes/prince/deco/i-book.webp':null);return id==='starLibrary'&&!c&&typeof starArt==='function'?`<div class="ico">${starArt('home',80)}</div>`:c?`<div class="ico"><img src="${c}" alt=""></div>`:p?`<div class="ico pk"><img src="${p}" alt=""></div>`:`<div class="ico">${SVG[id]}</div>`};
+const appIcon=id=>{const c=S.theme.icons[id],p=curPack().icons?.[id]||(id==='starLibrary'?'themes/prince/deco/i-book.webp':id==='visitors'?'themes/prince/deco/i-planet.webp':null);return id==='starLibrary'&&!c&&typeof starArt==='function'?`<div class="ico">${starArt('home',80)}</div>`:c?`<div class="ico"><img src="${c}" alt=""></div>`:p?`<div class="ico pk"><img src="${p}" alt=""></div>`:`<div class="ico">${SVG[id]}</div>`};
 const avHTML=(who,cls='av')=>{const p=who==='char'?S.char:S.user;return p.avatar?`<img class="${cls}" src="${p.avatar}">`:`<div class="${cls}">${esc((p.name||'?').slice(0,1))}</div>`};
 
 /* ========== 主屏 & 主题 ========== */
@@ -1663,8 +1665,9 @@ $('#gameClose').onclick=()=>{$('#gameView').classList.remove('open');const f=$('
 /* ========== App 页面栈 ========== */
 const STACK=[];
 document.addEventListener('click',e=>{const o=e.target.closest('[data-open]');if(o&&!editing())openApp(o.dataset.open);if(e.target.closest('[data-back]'))popApp()});
-const RENDER={starLibrary:()=>starRender(),world:()=>{wb.book=wb.entry=null;wbRender()},preset:()=>{ps.edit=null;psRender()},games:renderGames,chat:renderChat,story:renderStory,memory:renderMemory,char:renderChar,theme:renderTheme,settings:renderSettings,msgs:()=>renderMsgs(),diary:renderDiary,peek:renderPeek,shop:renderShop,food:renderFood};
+const RENDER={visitors:()=>visitorRender(),starLibrary:()=>starRender(),world:()=>{wb.book=wb.entry=null;wbRender()},preset:()=>{ps.edit=null;psRender()},games:renderGames,chat:renderChat,story:renderStory,memory:renderMemory,char:renderChar,theme:renderTheme,settings:renderSettings,msgs:()=>renderMsgs(),diary:renderDiary,peek:renderPeek,shop:renderShop,food:renderFood};
 function openApp(id){
+  if(id==='story'&&typeof visitorIsThread==='function'&&visitorIsThread(curT()))id='visitors';
   if(id==='chat'&&!STACK.length&&!openApp._direct)id='msgs';openApp._direct=false;
   const el=$('#app-'+id);if(!el)return;
   const i=STACK.indexOf(id);if(i>=0)STACK.splice(i+1);else STACK.push(id);
@@ -1762,6 +1765,7 @@ function buildPrompt(T,mode,extra,now=Date.now()){
     const memes=allMemes().map(x=>x.name).slice(0,60).join('、');
     sys+=`\n\n【手机消息的特殊格式】在合适的时候（不要每次都用）可以单独一行写：\n[语音] 要说的话 —— 发一条语音\n[表情包:名字] —— 发表情包，名字只能从这些里选：${memes}\n[照片:画面描述] —— 拍一张照片发过去，描述要具体（拍了什么、构图、光线、氛围）\n[红包:金额:祝福语] —— 发红包，例如 [红包:52.00:想你了]\n[转账:金额:备注] —— 转账\n[礼物:物品名:价格] —— 在淘宝给${u.name}买东西寄过去（偶尔、有理由时才用）\n[外卖:店名·菜品:价格] —— 给${u.name}点外卖（比如知道对方没吃饭、熬夜、心情不好）\n如果${u.name}发来了还没被领取的红包或转账，可以单独一行写 [领取] 收下，或者 [退还] 退回去${grp?'（群里谁领就由谁那一行写）':''}。`;
   }else sys+=`\n【当前：线下】${grp?`${cs.map(c=>c.name).join('、')}和${u.name}在现实中相处。用小说式叙述描写他们的动作、神态、语言和环境，可以写心理活动；绝不替${u.name}说话或决定${u.name}的行动。篇幅约${st.storyLength}字。`:(P.offline||DEFAULT_PRESET.offline)}`;
+  if(typeof visitorChatRules==='function')sys+=visitorChatRules(T,mode);
   const arr=[];let prev=0;
   const add=(role,content)=>{const p=arr.at(-1);if(p&&p.role===role)p.content+='\n'+content;else arr.push({role,content})};
   /* 聊天记录按 10 条一段地丢，开头保持不变，缓存才能命中 */
@@ -1890,6 +1894,7 @@ function parseLine(T,line,lastWho){
 }
 let busy=false,pending=null;
 async function generate(T,mode,extra,o={}){
+  if(mode==='offline'&&typeof visitorIsThread==='function'&&visitorIsThread(T)){openApp('visitors');toast('跨界见面请在万界来客中确认入境');return}
   if(typeof chatResetLocks!=='undefined'&&chatResetLocks.has(T.id))return;
   if(busy){if(!o.pro)pending={T,mode,extra};return}
   busy=true;if(!o.ts)setTyping(T,mode,true);
@@ -2052,6 +2057,7 @@ function renderChat(){
   });
   flush();
   if(!h)h=`<div class="evt" style="margin-top:40px">${grp?`群聊「${esc(tName(T))}」开张啦<br>说点什么，或者空着点 ✦ 让大家先聊`:`和 ${esc(tName(T))} 的聊天从这里开始<br>发条消息，或者空着点 ✦ 让TA先找你`}</div>`;
+  if(typeof visitorMeetingHTML==='function')h+=visitorMeetingHTML(T);
   const b=$('#chatList');b.innerHTML=h;b.scrollTop=b.scrollHeight;
 }
 let replyTimer;
@@ -2067,7 +2073,7 @@ $('#chatSend').onclick=()=>{
 };
 $('#chatMore').onclick=async()=>{
   const T=curT(),grp=isGroup(T);
-  const opts=[{label:'🌙 见面（线下剧情）',k:'story'},{label:'📖 长期记忆',k:'mem'}];
+  const opts=[{label:typeof visitorIsThread==='function'&&visitorIsThread(T)?'✧ 万界来客 · 跨界见面':'🌙 见面（线下剧情）',k:'story'},{label:'📖 长期记忆',k:'mem'}];
   if(!grp){opts.push({label:'🔍 偷看TA的日记',k:'diary'},{label:'📱 查TA的手机',k:'peek'},{label:'↻ 重置聊天 · 从开场白开始',k:'reset'});if(S.chatResets?.[T.members[0]]?.length)opts.push({label:'恢复上次会话',k:'restore'})}
   if(grp)opts.push({label:'👥 群成员和群名',k:'grp'});
   opts.push({label:'🧹 清空这里的聊天和剧情',k:'clear',danger:true});
@@ -2247,7 +2253,7 @@ async function importCard(asNew){
   }catch(e){toast('导入失败：'+e.message,4000)}
 }
 $('#cardImport').onclick=()=>importCard(true);
-$('#useFirst').onclick=()=>{readCharForm();const c=editingChar();if(!c?.first_mes)return toast('还没有填开场白');const T=threadOf(c.id);S.state.cur=T.id;save('state');pushMsg(T,'offline','assistant',c.first_mes,{who:c.id});openApp('story')};
+$('#useFirst').onclick=()=>{readCharForm();const c=editingChar();if(!c?.first_mes)return toast('还没有填开场白');const T=threadOf(c.id);S.state.cur=T.id;save('state');if(typeof visitorIsThread==='function'&&visitorIsThread(T)){openApp('visitors');return}pushMsg(T,'offline','assistant',c.first_mes,{who:c.id});openApp('story')};
 
 /* ========== 朋友圈 ========== */
 const pName=w=>w==='user'?S.user.name:(charById(w)?.name||'？');
@@ -2858,6 +2864,7 @@ function underColor(){
 <script src="companion.js"></script>
 <script src="chat-reset.js"></script>
 <script src="star-library.js"></script>
+<script src="visitors.js"></script>
 <script>
 /* ========== 启动 ========== */
 (async()=>{
