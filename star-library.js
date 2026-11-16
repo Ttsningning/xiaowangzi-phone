@@ -2,7 +2,7 @@
 DEFAULTS.starLibrary={books:[],trash:[],active:'',partner:'',view:'all',reader:{font:19,tone:'paper'}};
 const starJobs=new Set();
 const STAR_MODES={relay:'接力创作',outline:'大纲协作',director:'导演模式'};
-const STAR_RECTS={home:[0,0,635,620],read:[635,0,405,286],write:[1060,0,360,280],shelf:[645,290,375,270],works:[1025,280,400,295],empty:[420,555,710,469]};
+const STAR_RECTS={home:[20,0,620,620],read:[635,0,405,286],write:[1060,0,360,280],shelf:[645,290,375,270],works:[1025,280,400,295],empty:[420,555,710,469]};
 function starArt(kind,size=80){const [x,y,w,h]=STAR_RECTS[kind]||STAR_RECTS.home;return `<span class="star-art star-art-${kind}" style="width:${size}px;aspect-ratio:${w}/${h}" aria-hidden="true"><img src="themes/prince/star-library/materials.png" alt="" style="width:${1536/w*100}%;left:${-x/w*100}%;top:${-y/h*100}%"></span>`}
 function starButton(action,label,extra=''){return `<button class="btn" data-star="${action}" ${extra}>${esc(label)}</button>`}
 function starEnsure(){const L=S.starLibrary||=(structuredClone(DEFAULTS.starLibrary));L.books||=[];L.trash||=[];L.reader={font:19,tone:'paper',...L.reader};for(const b of L.books){b.chapters||=[];b.discussion||=[];b.bookmarks||=[];b.drafts||={};b.writeMode=STAR_MODES[b.writeMode]?b.writeMode:'outline';b.chapter=Math.max(0,Math.min(b.chapter||0,b.chapters.length-1));}return L}
