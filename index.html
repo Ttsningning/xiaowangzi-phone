@@ -733,7 +733,7 @@ input,textarea,select{font:inherit;color:var(--text)}
         <h3>TA</h3>
         <div class="field avpick"><div class="av" id="charAv"></div><button class="btn" data-avatar="char">换头像</button></div>
         <div class="field"><label>名字</label><input data-c="name"></div>
-        <div class="field"><label>角色设定</label><textarea data-c="description" style="min-height:140px"></textarea></div>
+        <div class="field"><label>性别（来客证）</label><select data-c="gender"><option value="">未填写</option><option value="female">女性</option><option value="male">男性</option><option value="other">其他</option></select></div><div class="field"><label>原生世界（选填）</label><input data-c="originWorld"></div><div class="field"><label>角色设定</label><textarea data-c="description" style="min-height:140px"></textarea></div>
         <div class="field"><label>性格</label><textarea data-c="personality"></textarea></div>
         <div class="field"><label>背景 / 场景</label><textarea data-c="scenario"></textarea></div>
         <div class="field"><label>开场白</label><textarea data-c="first_mes"></textarea><div class="hint">可在下方用开场白开始一段线下剧情。</div></div>
@@ -756,7 +756,7 @@ input,textarea,select{font:inherit;color:var(--text)}
         <h3>我</h3>
         <div class="field avpick"><div class="av" id="userAv"></div><button class="btn" data-avatar="user">换头像</button></div>
         <div class="field"><label>我的名字</label><input data-u="name"></div>
-        <div class="field"><label>我的人设</label><textarea data-u="persona"></textarea></div>
+        <div class="field"><label>我的性别（来客证）</label><select data-u="gender"><option value="">未填写</option><option value="female">女性</option><option value="male">男性</option><option value="other">其他</option></select></div><div class="field"><label>我的原生世界</label><input data-u="originWorld" placeholder="来客证上的来源世界"></div><div class="field"><label>我的人设</label><textarea data-u="persona"></textarea></div>
         <div class="field"><label>我的外貌（生图用）</label><textarea data-u="look" style="min-height:60px"></textarea></div>
         <div class="btns"><button class="btn" data-wmx="family-generate">✦ bb 根据我的身份生成几位家人</button></div>
         <div class="hint">结合我的人设与世界书生成，先看人设，选中后才加入联系人。会使用当前 AI 接口。</div><div id="familyDrafts"></div>
@@ -1046,7 +1046,7 @@ const SVG={
 const APPS=[{id:'visitors',name:'万界来客'},{id:'starLibrary',name:'星页书房'},{id:'wallet',name:'钱包'},{id:'market',name:'万界杂货铺'},{id:'chat',name:'消息'},{id:'story',name:'见面'},{id:'memory',name:'记忆'},{id:'char',name:'角色'},{id:'theme',name:'美化'},{id:'world',name:'世界书'},{id:'preset',name:'预设'},{id:'games',name:'游戏'},{id:'peek',name:'查手机'},{id:'shop',name:'淘宝'},{id:'food',name:'美团'},{id:'settings',name:'设置'}];
 const DOCK=['chat','story','memory','settings'];
 const GAMES=[{id:'denglin',name:'登临',sub:'范德林谋杀案 · 新婚寡妇 × 嫉恶如仇的探员。她有无懈可击的不在场证明，你有一整夜。',src:'games/denglin.html',cover:'games/denglin-cover.jpg'},{id:'2048',name:'2048',sub:'小王子陪你凑 2048，从一颗星星合成到月亮。五套皮肤：小王子、粉色毛绒、红格子田园、金棕酒馆、珍珠玫瑰。',src:'games/2048.html',cover:'games/2048-cover.jpg'}];
-const appIcon=id=>{const c=S.theme.icons[id],p=curPack().icons?.[id]||(id==='starLibrary'?'themes/prince/deco/i-book.webp':id==='visitors'?'themes/prince/deco/i-planet.webp':null);return id==='starLibrary'&&!c&&typeof starArt==='function'?`<div class="ico">${starArt('home',80)}</div>`:c?`<div class="ico"><img src="${c}" alt=""></div>`:p?`<div class="ico pk"><img src="${p}" alt=""></div>`:`<div class="ico">${SVG[id]}</div>`};
+const appIcon=id=>{const c=S.theme.icons[id],p=curPack().icons?.[id]||(id==='starLibrary'?'themes/prince/deco/i-book.webp':id==='visitors'?'themes/prince/visitors/app.webp':null);return id==='starLibrary'&&!c&&typeof starArt==='function'?`<div class="ico">${starArt('home',80)}</div>`:c?`<div class="ico"><img src="${c}" alt=""></div>`:p?`<div class="ico pk"><img src="${p}" alt=""></div>`:`<div class="ico">${SVG[id]}</div>`};
 const avHTML=(who,cls='av')=>{const p=who==='char'?S.char:S.user;return p.avatar?`<img class="${cls}" src="${p.avatar}">`:`<div class="${cls}">${esc((p.name||'?').slice(0,1))}</div>`};
 
 /* ========== 主屏 & 主题 ========== */
@@ -2213,8 +2213,8 @@ function renderChar(){
   const c=editingChar();
   $('#charPick').innerHTML=S.chars.map(x=>`<button data-pick="${x.id}" class="${c&&x.id===c.id?'on':''}">${charAv(x)}<span>${esc(x.name)}</span></button>`).join('')+`<button data-pick="me" class="${!c?'on':''}">${avHTML('user')}<span>我</span></button><button data-pick="new"><div class="av">＋</div><span>新角色</span></button>`;
   $('#charCard').style.display=c?'':'none';$('#meCard').style.display=c?'none':'';$('#charBtns').style.display=c?'':'none';
-  if(c){$('#charTimeAware').value=c.timeAware===true?'on':c.timeAware===false?'off':'inherit';$$('[data-c]').forEach(el=>el.value=c[el.dataset.c]||'');const a=c.api||{};$$('[data-ca]').forEach(el=>el.value=a[el.dataset.ca]||({fmt:'openai',cache:'off'})[el.dataset.ca]||'');$('[data-cashow]').style.display=a.fmt==='anthropic'?'':'none';showStat(c);$('#charAv').outerHTML=charAv(c).replace('class="av"','class="av" id="charAv"')}
-  $$('[data-u]').forEach(el=>el.value=S.user[el.dataset.u]||'');$('#userAv').outerHTML=avHTML('user').replace('class="av"','class="av" id="userAv"');
+  if(c){$('#charTimeAware').value=c.timeAware===true?'on':c.timeAware===false?'off':'inherit';$$('[data-c]').forEach(el=>el.value=el.dataset.c==='gender'&&typeof mixiGender==='function'?mixiGender(c):c[el.dataset.c]||'');const a=c.api||{};$$('[data-ca]').forEach(el=>el.value=a[el.dataset.ca]||({fmt:'openai',cache:'off'})[el.dataset.ca]||'');$('[data-cashow]').style.display=a.fmt==='anthropic'?'':'none';showStat(c);$('#charAv').outerHTML=charAv(c).replace('class="av"','class="av" id="charAv"')}
+  $$('[data-u]').forEach(el=>el.value=el.dataset.u==='gender'&&typeof mixiGender==='function'?mixiGender(S.user):S.user[el.dataset.u]||'');$('#userAv').outerHTML=avHTML('user').replace('class="av"','class="av" id="userAv"');
 }
 $('#charPick').onclick=e=>{const b=e.target.closest('[data-pick]');if(!b)return;readCharForm();const k=b.dataset.pick;
   if(k==='new'){const c={id:'c'+uid(),name:'新角色',avatar:'',description:'',personality:'',scenario:'',first_mes:'',mes_example:'',voice:''};S.chars.push(c);saveChars();charEdit=c.id}else charEdit=k;renderChar()};
@@ -2865,6 +2865,7 @@ function underColor(){
 <script src="chat-reset.js"></script>
 <script src="star-library.js"></script>
 <script src="visitors.js"></script>
+<script src="visitors-city.js"></script>
 <script>
 /* ========== 启动 ========== */
 (async()=>{

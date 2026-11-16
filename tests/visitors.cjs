@@ -1,15 +1,15 @@
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
 const {JSDOM,VirtualConsole}=require('jsdom'),{indexedDB}=require('fake-indexeddb');
 const root=path.resolve(__dirname,'..');let html=fs.readFileSync(path.join(root,'index.html'),'utf8');
-for(const file of ['world-market.js','market-trades.js','treasure.js','keepsakes.js','chat-reset.js','star-library.js','visitors.js'])html=html.replace('<script src="'+file+'"></script>',()=>'<script>'+fs.readFileSync(path.join(root,file),'utf8')+'</script>');
+for(const file of ['world-market.js','market-trades.js','treasure.js','keepsakes.js','chat-reset.js','star-library.js','visitors.js','visitors-city.js'])html=html.replace('<script src="'+file+'"></script>',()=>'<script>'+fs.readFileSync(path.join(root,file),'utf8')+'</script>');
 const errors=[],vc=new VirtualConsole();vc.on('jsdomError',e=>{if(!/Not implemented/.test(e.message))errors.push(e.message)});
 const dom=new JSDOM(html,{url:'https://example.test/',runScripts:'dangerously',virtualConsole:vc,pretendToBeVisual:true,beforeParse(w){w.structuredClone=structuredClone;w.TextDecoder=TextDecoder;w.TextEncoder=TextEncoder;w.Blob=Blob;w.indexedDB=indexedDB;w.matchMedia=()=>({matches:false});w.HTMLElement.prototype.scrollTo=function(){};w.HTMLElement.prototype.scrollIntoView=function(){};w.fetch=async()=>{throw Error('No live APIs in tests')};}});
 const w=dom.window,ev=x=>w.eval(x),check=(label,x)=>{assert.ok(ev(x),label);console.log('PASS',label)};
 (async()=>{
  for(let n=0;n<100;n++){if(ev('!!S.chars?.length&&!!S.visitors'))break;await new Promise(r=>setTimeout(r,20))}
  ev('S.settings.proactive=false;visitorInit();visitorInit()');
- check('one desktop app and one world book after repeated initialization',`S.home.pages.flat().filter(x=>x.app==='visitors').length===1&&S.world.books.filter(b=>b.src==='builtin:visitors-v1').length===1`);
- check('world rules preserve the planet and local resident boundaries',`VISITOR_WORLD_RULES.includes('终生只能留在这颗星球')&&VISITOR_WORLD_RULES.includes('外来女性与本地男性')&&VISITOR_WORLD_RULES.includes('本地女性终生不婚不育')&&VISITOR_WORLD_RULES.includes('不允许接近')&&VISITOR_WORLD_RULES.includes('大学毕业')`);
+ check('one desktop app and one world book after repeated initialization',`S.home.pages.flat().filter(x=>x.app==='visitors').length===1&&S.world.books.filter(b=>/^builtin:visitors-v[12]$/.test(b.src)).length===1`);
+ check('world rules preserve the planet and local resident boundaries',`VISITOR_WORLD_RULES.includes('终生只能留在这颗星球')&&VISITOR_WORLD_RULES.includes('外来女性与本地男性')&&VISITOR_WORLD_RULES.includes('本地女性终生不婚不育')&&VISITOR_WORLD_RULES.includes('不得靠近')&&VISITOR_WORLD_RULES.includes('大学毕业')`);
  ev(`var local=S.chars[0],cross={id:'cross-test',name:'陆渊',description:'修真者',personality:'沉稳',marketOrigin:{world:'修真界',source:'温脉暖玉'}};S.chars.push(cross);var CT=threadOf(cross.id),LT=threadOf(local.id);var funds=S.wallet.balance;`);
  check('deterministic routing follows metadata, never appearance or AI wording',`visitorRoute(CT)==='visitors'&&visitorRoute(LT)==='story'&&!visitorIsChar({name:'异世界魔王',description:'来自万界'})`);
  ev(`pushMsg(CT,'online','assistant','我们明天见面吧。');S.state.cur=CT.id;renderChat()`);
@@ -22,9 +22,9 @@ const w=dom.window,ev=x=>w.eval(x),check=(label,x)=>{assert.ok(ev(x),label);cons
  await ev(`generate(CT,'offline')`);assert.equal(ev('calls'),0);
  await ev(`visitorMeet(CT.id)`);
  check('only the clicked meeting button establishes presence and selected companion',`S.visitors.inside&&S.visitors.companion===cross.id&&STACK.at(-1)==='visitors'&&calls===0`);
- check('restricted incubation facility has no travel action',`!document.querySelector('[data-place="incubator"]')&&document.querySelector('.visitor-restricted').textContent.includes('不得接近')`);
+ check('restricted incubation facility has no travel action',`!document.querySelector('[data-place="incubator"]')&&document.querySelector('.visitor-restricted').textContent.includes('不得靠近')`);
  ev(`S.visitors.drafts[cross.id]='聊聊我们在线上买的暖玉。'`);await ev('visitorGenerate()');
- check('planet story is separate from original offline thread',`calls===1&&visitorJournal(cross.id).some(m=>m.role==='assistant')&&!CT.msgs.some(m=>m.mode==='offline')&&captured[0].content.includes('地点：来客星港')&&captured[0].content.includes('力量压制')`);
+ check('planet story is separate from original offline thread',`calls===1&&visitorJournal(cross.id).some(m=>m.role==='assistant')&&!CT.msgs.some(m=>m.mode==='offline')&&captured[0].content.includes('来客星港')&&captured[0].content.includes('力量压制')`);
  ev(`S.visitors.drafts[cross.id]='保留我的这句话';callAPI=async()=>{throw Error('offline')}`);
  await assert.rejects(ev('visitorGenerate()'),/offline/);
  check('API failure preserves typed draft and releases loading state',`S.visitors.drafts[cross.id]==='保留我的这句话'&&visitorsBusy.size===0`);
@@ -35,7 +35,35 @@ const w=dom.window,ev=x=>w.eval(x),check=(label,x)=>{assert.ok(ev(x),label);cons
  ev(`document.querySelector('[data-visitor="leave"]').click()`);for(let n=0;n<50&&ev('S.visitors.inside');n++)await new Promise(r=>setTimeout(r,10));
  check('returning home ends co-presence but preserves the journey',`!S.visitors.inside&&!S.visitors.companion&&visitorJournal(cross.id).some(m=>m.role==='assistant')`);
  await ev('visitorSave()');const saved=await ev('DB.get("visitors")');assert.ok(saved.journals['cross-test'].length);
- ev(`var all=buildBackup();`);check('complete backup includes planet presence journals and rules',`all.visitors.journals['cross-test'].length>0&&all.world.books.some(b=>b.src==='builtin:visitors-v1')`);
+ ev(`var all=buildBackup();`);check('complete backup includes planet presence journals and rules',`all.visitors.journals['cross-test'].length>0&&all.world.books.some(b=>/^builtin:visitors-v[12]$/.test(b.src))`);
  await ev('visitorMeet(LT.id)');check('same-world friends still use the existing story app',`STACK.at(-1)==='story'&&!S.visitors.inside`);
+
+ // Live documents, explicit arrival, mother authorization and durable city life.
+ ev(`S.user.gender='female';S.user.name='宁宁';S.user.avatar='data:image/png;base64,DO_NOT_SEND_AVATAR';cross.gender='male';cross.avatar='data:image/png;base64,PRIVATE_IMAGE';var passNumber=visitorPassport(cross.id).number;cross.name='陆渊改名';`);
+ check('passport fields follow role card updates while keeping its document number',`visitorPassport(cross.id).name==='陆渊改名'&&visitorPassport(cross.id).gender==='male'&&visitorPassport(cross.id).avatar.includes('PRIVATE_IMAGE')&&visitorPassport(cross.id).number===passNumber`);
+ await ev('visitorEnter(cross.id)');
+ check('selecting someone establishes an invitation, not physical co-presence',`!visitorCoPresent()&&S.visitors.arrivals[cross.id].status==='invited'`);
+ await ev(`visitorMove('cafe');visitorConfirmArrival()`);
+ // Await the arrival function separately because it persists asynchronously.
+ await new Promise(r=>setTimeout(r,30));
+ check('arrival at starport does not teleport a guest to the cafe',`S.visitors.place==='cafe'&&S.visitors.arrivals[cross.id].place==='port'&&!visitorCoPresent()`);
+ await ev(`visitorMove('port')`);check('meeting at the same location establishes co-presence',`visitorCoPresent()`);
+ ev('var originalActions=actionSheet;actionSheet=async()=>0;');await ev('visitorApplyPermit()');
+ check('mother approval is recorded only after explicit female application',`visitorAccess().allowed&&S.visitors.permits.user.status==='approved'&&!visitorAccess(cross.id).allowed`);
+ await ev(`visitorMove('incubator')`);
+ check('authorized female can visit while male companion remains outside',`S.visitors.place==='incubator'&&S.visitors.arrivals[cross.id].place==='port'&&!visitorCoPresent()`);
+ ev(`var prompt=visitorMessages(S.visitors,cross,'参观');`);
+ check('AI receives name gender and authorization without avatar bytes',`!JSON.stringify(prompt).includes('PRIVATE_IMAGE')&&!JSON.stringify(prompt).includes('DO_NOT_SEND_AVATAR')&&prompt[0].content.includes('未会合')`);
+ ev(`S.user.gender='male';visitorEnsure()`);
+ check('changing identity revokes a permit and exits restricted space',`!visitorAccess().allowed&&S.visitors.permits.user.status==='revoked'&&S.visitors.place==='port'`);
+ await assert.rejects(ev(`visitorMove('incubator')`),/男性/);
+ ev(`S.user.gender='female';var originalForms=formSheet;formSheet=async()=>({name:'云台小窝',decor:'窗边一盏暖灯'});actionSheet=async()=>1;`);await ev('visitorRegisterHome()');
+ check('home and decoration persist without reclassifying an outsider as native',`S.visitors.home.name==='云台小窝'&&S.visitors.home.settled&&visitorPassport().stay==='长期定居'&&!visitorPassport().native`);
+ ev(`formSheet=async()=>({title:'星港票根',text:'在星港会合后一起留下的纪念'});S.visitors.place='port'`);await ev('visitorRemember()');
+ check('shared keepsake reaches the bag and character memory with evidence',`S.visitors.souvenirs[0].cid===cross.id&&S.wallet.bag.some(x=>x.name==='星港票根'&&x.source==='visitors')&&ksBook(cross.id).cards.some(x=>x.title==='星港票根'&&x.sourceMsgIds.length===1)`);
+ ev(`callAPI=async()=>JSON.stringify({news:[{kind:'交通',title:'环城列车',text:'星港线路如常运行。'}]})`);await ev('visitorRefreshNews()');
+ check('city bulletin stores only news and does not move the user',`S.visitors.news[0].title==='环城列车'&&S.visitors.place==='port'`);
+ await ev('visitorSave()');const cityDisk=await ev('DB.get("visitors")');assert.equal(cityDisk.home.name,'云台小窝');assert.ok(cityDisk.souvenirs.length);
+ ev('formSheet=originalForms;actionSheet=originalActions;');
  assert.deepEqual(errors,[]);console.log('PASS no runtime errors');
 })().catch(e=>{console.error(e);process.exitCode=1}).finally(()=>dom.window.close());

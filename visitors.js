@@ -2,15 +2,15 @@
 DEFAULTS.visitors={inside:false,place:'port',companion:'',journals:{},drafts:{},epoch:0};
 const VISITOR_PLACES={port:{name:'来客星港',kind:'通行枢纽',desc:'穿过抵达大厅，霓虹航线延伸进城市。返乡通道只通向各自的原生世界。'},promenade:{name:'霓虹商贸街',kind:'商务与面基',desc:'会谈室、实体商铺与跨界企业聚集。线上杂货铺仍是线上平台；这里的实体生意另行发生。'},cafe:{name:'悬空咖啡馆',kind:'公共会面',desc:'在环城轨道旁找一张桌子，第一次把聊天框里的声音听在耳边。'},park:{name:'穹顶公园',kind:'城市日常',desc:'人造晨昏照过树梢，来客和当地居民在公共步道散步。'},residence:{name:'生活居住区',kind:'短住与定居',desc:'旅舍、住宅与社区服务让这颗星球也能成为长期生活的家。'}};
 const VISITOR_WORLD_RULES=`【万界杂货铺与万界来客·世界规则】
-万界法则禁止各个原生小世界彼此连通，防止强者前往普通小世界作威作福。万界来客是一颗位于这项隔离法则灰色地带的高度发达赛博星球，允许不同世界的旅人抵达同一颗星球，但不能借此进入别人的原生世界；返乡只能返回自己的原生世界。
-星球规则会把所有外来者的力量压制为普通人或略强于普通人的水平，大能也不得保留原世界的压倒性力量或用化身、法器、代理等方式绕过限制，因此这里至今安详。来客以做生意和面基为主，也有人定居、结婚生子、度过一生。外来客人主要是男性，但外来女性同样可以来访。
-星球普通原住公民诞生于母星自带的人造子宫：这是一座巨型育成与教育建筑，原住民从出生到大学毕业都在其中生活，毕业后进入星球各行业工作，福利待遇极佳。万界外来客人不允许接近这座设施，不能通过赴约、找工作、伪装居民或邀请绕过限制。设施不是约会、探访或自由探索地点。成年居民在设施之外正常生活；不得把设施内的未成年人安排为恋爱对象。
-星球规则使原本存在生殖隔离的物种（例如鲛人与人）以及生育艰难的修真界大能都能正常生育；生育不会自动发生，须尊重人物意愿与用户明确推进。为防利用规则骗婚，在万界来客出生的孩子终生只能留在这颗星球，不能被父母、法术或任何通道带往其他世界。不得暗示孩子获得任何跨界例外。
+万界法则禁止各个原生小世界彼此连通，防止强者前往普通小世界作威作福。弥隙星是一颗位于这项隔离法则灰色地带的高度发达赛博星球；「万界来客」仅为访问星球的APP名称。弥隙星允许不同世界的旅人抵达同一颗星球，但不能借此进入别人的原生世界；返乡只能返回自己的原生世界。
+星球规则会把所有外来者的力量压制为普通人或略强于普通人的水平，大能也不得保留原世界的压倒性力量或用化身、法器、代理等方式绕过限制，因此这里至今安详。来客以做生意和面基为主，也有人定居、结婚生子、度过一生。外来男性与外来女性都可以来访弥隙星，限制针对育成设施的准入，不按性别限制星球入境。
+星球普通原住公民诞生于母星自带的人造子宫：这是一座巨型育成与教育建筑，原住民从出生到大学毕业都在其中生活，毕业后进入星球各行业工作，福利待遇极佳。外来男性不得靠近或进入这座设施，不能通过赴约、找工作、伪装居民或邀请绕过限制。外来女性在得到母星许可后可以进入参观，未获许可不得进入。准入以明确填写的身份资料与母星许可记录为准，不能仅凭角色台词获得许可。设施不是约会地点。成年居民在设施之外正常生活；不得把设施内的未成年人安排为恋爱对象。
+星球规则使原本存在生殖隔离的物种（例如鲛人与人）以及生育艰难的修真界大能都能正常生育；生育不会自动发生，须尊重人物意愿与用户明确推进。为防利用规则骗婚，在弥隙星出生的孩子终生只能留在这颗星球，不能被父母、法术或任何通道带往其他世界。不得暗示孩子获得任何跨界例外。
 外来者彼此可以在此结婚生子。外来者与本地居民的婚育组合只允许外来女性与本地男性；本地女性终生不婚不育，在本人自愿的前提下可以谈恋爱。不得以恋爱剧情、特殊身份或能力改写这条规则。出生于这里的外来者子女同样受星球边界约束，不擅自设定必须交由原住民育成设施抚养。
 万界杂货铺完全存在于线上：商品页、收物应单、留言、交易、加好友均为远程操作；商品通过跨界物流或物品传送交付，人不随包裹抵达。不得描写用户与卖家当面站立、靠近、触碰、递手中物品。加好友只建立线上通讯，不产生同处关系。
-万界来源好友不能通过普通“见面”进入用户或对方原生世界，只能进入万界来客。普通同世界好友沿用原有线下见面。聊天提及见面仅显示可选入口，必须由用户点击才改变场景。入境、当前位置、同行者与返乡以程序保存的状态为准，旧聊天中误写的面对面动作不构成真实见面。关闭页面不自动推进重大人生事件。`;
+万界来源好友不能通过普通“见面”进入用户或对方原生世界，只能通过万界来客APP进入弥隙星。普通同世界好友沿用原有线下见面。聊天提及见面仅显示可选入口，必须由用户点击才改变场景。入境、当前位置、同行者与返乡以程序保存的状态为准，旧聊天中误写的面对面动作不构成真实见面。关闭页面不自动推进重大人生事件。`;
 const visitorsBusy=new Set();
-function visitorEnsure(){S.visitors||=structuredClone(DEFAULTS.visitors);S.visitors.epoch||=0;S.visitors.journals||={};S.visitors.drafts||={};if(!VISITOR_PLACES[S.visitors.place])S.visitors.place='port';return S.visitors}
+function visitorEnsure(){S.visitors||=structuredClone(DEFAULTS.visitors);S.visitors.epoch||=0;S.visitors.journals||={};S.visitors.drafts||={};if(!VISITOR_PLACES[S.visitors.place]&&S.visitors.place!=='incubator')S.visitors.place='port';return S.visitors}
 function visitorIsChar(c){return !!(c?.marketOrigin||c?.marketPersonId||c?.visitorOrigin)}
 function visitorIsThread(T){return !!T?.members?.some(id=>visitorIsChar(charById(id)))}
 function visitorRoute(T){return visitorIsThread(T)?'visitors':'story'}
@@ -19,7 +19,7 @@ function visitorJournal(cid){const V=visitorEnsure();return V.journals[cid||'sol
 function visitorInit(){
  visitorEnsure();
  if(!S.home.visitorsV1){if(!S.home.pages.flat().some(x=>x.app==='visitors'))S.home.pages.at(-1).push({id:uid(),type:'app',app:'visitors'});S.home.visitorsV1=true;save('home')}
- if(!S.world.books.some(b=>b.src==='builtin:visitors-v1')){S.world.books.push({id:uid(),name:'万界法则 · 杂货铺与来客星球',src:'builtin:visitors-v1',enabled:true,entries:[{id:uid(),keys:['万界','杂货铺','来客','跨界','星球'],content:VISITOR_WORLD_RULES,constant:false,enabled:true,comment:'平台边界与星球规则',order:100}]});save('world')}
+ if(!S.world.books.some(b=>/^builtin:visitors-v[12]$/.test(b.src))){S.world.books.push({id:uid(),name:'万界法则 · 杂货铺与来客星球',src:'builtin:visitors-v1',enabled:true,entries:[{id:uid(),keys:['万界','杂货铺','来客','跨界','星球'],content:VISITOR_WORLD_RULES,constant:false,enabled:true,comment:'平台边界与星球规则',order:100}]});save('world')}
 }
 function visitorChatRules(T,mode){
  if(!visitorIsThread(T))return '';
@@ -55,7 +55,7 @@ function visitorRender(){
 }
 function visitorMessages(V,c,text){
  const T=c?threadOf(c.id):null,online=T?T.msgs.filter(m=>m.mode==='online'&&['user','assistant'].includes(m.role)).slice(-10).map(m=>`${m.role==='user'?S.user.name:c.name}：${m.content}`).join('\n'):'';
- const logs=visitorJournal(V.companion).slice(-24).map(m=>({role:m.role==='assistant'?'assistant':'user',content:(m.role==='event'?'[已确认场景] ':'')+m.text}));
+ const logs=visitorJournal(V.companion).filter(m=>!T?.resetAt||m.at>=T.resetAt).slice(-24).map(m=>({role:m.role==='assistant'?'assistant':'user',content:(m.role==='event'?'[已确认场景] ':'')+m.text}));
  return [{role:'system',content:VISITOR_WORLD_RULES+'\n【已确认当前场景】用户已入境；地点：'+VISITOR_PLACES[V.place].name+'；同行者：'+(c?.name||'无，用户独自旅行')+'。'+(c?'你扮演这位成年同行者，并描写当前城市环境。\n'+cardBlock(c):'你描写城市日常和公共场所的成年居民。不得擅自增加已确立的恋爱关系。')+'\n世界书补充：'+worldInfo('万界来客','')+'\n用户设定：'+(S.user.persona||'未设置')+'\n最近线上联系仅供背景，不改变当前地点：\n'+online+'\n用小说式中文叙述，约'+(S.settings.storyLength||400)+'字。不替用户说话、决定行动、同意婚育或改变地点。只写正文，不输出支付、背包、通行或家庭状态指令。'},...logs,{role:'user',content:text||'看看此刻身边的城市与同行者，让故事自然继续。'}];
 }
 async function visitorGenerate(){
@@ -63,7 +63,7 @@ async function visitorGenerate(){
  const cid=V.companion,c=charById(cid),key=cid||'solo',text=(V.drafts[key]||'').trim(),logs=visitorJournal(cid),epoch=V.epoch;
  if(!ownAPI(c)&&!apiReady())throw Error('先在设置或同行者角色页填写 AI 接口');
  const messages=visitorMessages(V,c,text);visitorsBusy.add(key);visitorRender();
- try{const out=clean(await callAPI(messages,{char:c||undefined,max_tokens:1800,temperature:.9}));if(S.visitors!==V||V.epoch!==epoch||!V.inside)return;if(!out)throw Error('这次没有生成正文，输入已保留');if(text)logs.push({role:'user',text,at:Date.now()});logs.push({role:'assistant',text:out,name:c?.name||'星球见闻',at:Date.now()});V.drafts[key]='';await visitorSave()}
+ try{const out=clean(await callAPI(messages,{char:c||undefined,max_tokens:1800,temperature:.9}));if(S.visitors!==V||V.epoch!==epoch||!V.inside)return;if(!out)throw Error('这次没有生成正文，输入已保留');if(text)logs.push({role:'user',text,at:Date.now()});logs.push({role:'assistant',text:out,name:typeof visitorCoPresent==='function'&&!visitorCoPresent(V)?'弥隙星见闻':c?.name||'星球见闻',at:Date.now()});V.drafts[key]='';await visitorSave()}
  finally{visitorsBusy.delete(key);if(S.visitors===V)visitorRender()}
 }
 document.addEventListener('click',async e=>{const el=e.target.closest('[data-visitor]');if(!el||el.disabled)return;try{
