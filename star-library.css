@@ -10,3 +10,7 @@
 .star-art-home{clip-path:polygon(0 0,100% 0,100% 88%,86% 88%,86% 100%,0 100%)}
 .star-art-works{clip-path:inset(6% 0 0)}
 .star-art-empty{clip-path:polygon(23% 0,100% 0,100% 100%,0 100%,0 26%,17% 26%,17% 11%,23% 11%)}
+
+/* Desktop sprite must keep its source aspect ratio despite shared app-image rules. */
+.ico .star-art{width:100%!important;height:100%;aspect-ratio:1;display:block}
+.ico .star-art img{height:auto!important;object-fit:initial!important}
