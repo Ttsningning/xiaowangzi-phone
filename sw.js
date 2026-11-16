@@ -1,6 +1,6 @@
 // 月光海小手机：离线缓存。先用缓存秒开，同时后台拉新版本，下次打开生效。
-const C='little-prince-v17';
-const SHELL=['./','./index.html','./world-market.js','./world-market.css','./market-trades.js','./treasure.js','./treasure.css','./keepsakes.js','./keepsakes.css','./companion.js','./star-library.js','./star-library.css','./visitors.js','./visitors-city.js','./visitors.css','./chat-reset.js','./companion.css','./manifest.json','./icon.png'];
+const C='little-prince-v18';
+const SHELL=['./','./index.html','./world-market.js','./world-market.css','./market-trades.js','./treasure.js','./treasure.css','./keepsakes.js','./keepsakes.css','./companion.js','./star-library.js','./star-library.css','./visitors.js','./visitors-city.js','./visitors.css','./model-picker.js','./model-picker.css','./chat-reset.js','./companion.css','./manifest.json','./icon.png'];
 self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(C).then(c=>c.addAll(SHELL)).catch(()=>{}))});
 self.addEventListener('activate',e=>e.waitUntil((async()=>{for(const k of await caches.keys())if(k.startsWith('little-prince-')&&k!==C)await caches.delete(k);await self.clients.claim()})()));
 self.addEventListener('fetch',e=>{

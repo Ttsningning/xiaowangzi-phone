@@ -650,6 +650,7 @@ input,textarea,select{font:inherit;color:var(--text)}
 <link rel="stylesheet" href="keepsakes.css">
 <link rel="stylesheet" href="star-library.css">
 <link rel="stylesheet" href="visitors.css">
+<link rel="stylesheet" href="model-picker.css">
 <link rel="stylesheet" href="companion.css">
 </head>
 <body>
@@ -2214,7 +2215,7 @@ function renderChar(){
   $('#charPick').innerHTML=S.chars.map(x=>`<button data-pick="${x.id}" class="${c&&x.id===c.id?'on':''}">${charAv(x)}<span>${esc(x.name)}</span></button>`).join('')+`<button data-pick="me" class="${!c?'on':''}">${avHTML('user')}<span>我</span></button><button data-pick="new"><div class="av">＋</div><span>新角色</span></button>`;
   $('#charCard').style.display=c?'':'none';$('#meCard').style.display=c?'none':'';$('#charBtns').style.display=c?'':'none';
   if(c){$('#charTimeAware').value=c.timeAware===true?'on':c.timeAware===false?'off':'inherit';$$('[data-c]').forEach(el=>el.value=el.dataset.c==='gender'&&typeof mixiGender==='function'?mixiGender(c):c[el.dataset.c]||'');const a=c.api||{};$$('[data-ca]').forEach(el=>el.value=a[el.dataset.ca]||({fmt:'openai',cache:'off'})[el.dataset.ca]||'');$('[data-cashow]').style.display=a.fmt==='anthropic'?'':'none';showStat(c);$('#charAv').outerHTML=charAv(c).replace('class="av"','class="av" id="charAv"')}
-  $$('[data-u]').forEach(el=>el.value=el.dataset.u==='gender'&&typeof mixiGender==='function'?mixiGender(S.user):S.user[el.dataset.u]||'');$('#userAv').outerHTML=avHTML('user').replace('class="av"','class="av" id="userAv"');
+  $$('[data-u]').forEach(el=>el.value=el.dataset.u==='gender'&&typeof mixiGender==='function'?mixiGender(S.user):S.user[el.dataset.u]||'');$('#userAv').outerHTML=avHTML('user').replace('class="av"','class="av" id="userAv"');if(typeof modelPickerRestore==='function')modelPickerRestore('caModelList');
 }
 $('#charPick').onclick=e=>{const b=e.target.closest('[data-pick]');if(!b)return;readCharForm();const k=b.dataset.pick;
   if(k==='new'){const c={id:'c'+uid(),name:'新角色',avatar:'',description:'',personality:'',scenario:'',first_mes:'',mes_example:'',voice:''};S.chars.push(c);saveChars();charEdit=c.id}else charEdit=k;renderChar()};
@@ -2225,9 +2226,7 @@ $('#charMemory').onclick=()=>{readCharForm();if(editingChar()&&typeof ksOpenMemo
 $('#charAlbum').onclick=()=>{readCharForm();if(editingChar()&&typeof ksOpenAlbum==='function')ksOpenAlbum(editingChar().id)};
 $('#charChat').onclick=()=>{readCharForm();openThread(threadOf(editingChar().id).id)};
 $('[data-ca=fmt]').onchange=e=>{$('[data-cashow]').style.display=e.target.value==='anthropic'?'':'none'};
-$('#caFetch').onclick=async()=>{readCharForm();const a=editingChar().api;if(!a.base||!a.key)return toast('先填接口地址和密钥');toast('拉取中…',6000);
-  try{let ids;if(a.fmt==='anthropic'){const r=await fetch(a.base.replace(/\/+$/,'').replace(/\/v1$/,'')+'/v1/models?limit=100',{headers:anthHead(a.key)});if(!r.ok)throw new Error('接口报错 '+r.status);ids=((await r.json()).data||[]).map(m=>m.id)}else ids=await fetchModelIds(a.base,a.key);
-    $('#caModelList').innerHTML=ids.map(i=>`<option value="${esc(i)}">`).join('');pickList(`拉到 ${ids.length} 个模型`,ids.map(i=>[i]),v=>{$('[data-ca=model]').value=v;readCharForm()})}catch(e){toast(e.message+'（也可能是跨域被拦）',5000)}};
+$('#caFetch').onclick=()=>modelPickerFetch('caModelList');
 $('#caTest').onclick=async()=>{readCharForm();const c=editingChar();if(!ownAPI(c))return toast('地址、密钥、模型三项要填全');toast('测试中…',8000);
   try{const r=await callAPI([{role:'user',content:'只回复四个字：连接成功'}],{max_tokens:30,char:c});toast('✓ '+clean(r).slice(0,40))}catch(e){toast(e.message+'（也可能是跨域被拦）',5000)}};
 $('#charDel').onclick=()=>{const c=editingChar();deleteChar(c.id).then(()=>{charEdit=null;renderChar()})};
@@ -2418,10 +2417,8 @@ function pickList(title,items,onPick){
   s.onclick=e=>{const b=e.target.closest('[data-k]');if(!b)return;closeSheet();const k=+b.dataset.k;if(k>=0)onPick(items[k][0])};
   $('#mask').classList.add('show');s.classList.add('show');
 }
-$$('[data-fm]').forEach(b=>b.onclick=async()=>{const [base,key,list,field]=FM[b.dataset.fm]();toast('拉取中…',6000);
-  try{const ids=await fetchModelIds(base,key);$('#'+list).innerHTML=ids.map(i=>`<option value="${esc(i)}">`).join('');toast(`拉到 ${ids.length} 个模型`);
-    if(ids.length)pickList('选一个模型',ids.map(i=>[i,'']),v=>{S.settings[field]=v;save('settings');renderSettings();toast('已选 '+v)})}catch(e){toast(e.message,4000)}});
-$('#mmModels').onclick=()=>pickList('MiniMax 语音模型',[['speech-2.8-hd','2.8 高清'],['speech-2.8-turbo','2.8 快速'],['speech-2.6-hd','2.6 高清'],['speech-2.6-turbo','2.6 快速'],['speech-02-hd','02 高清'],['speech-02-turbo','02 快速']],v=>{S.settings.mmModel=v;save('settings');renderSettings();toast('已选 '+v)});
+$$('[data-fm]').forEach(b=>b.onclick=()=>modelPickerFetch(FM[b.dataset.fm]()[2]));
+$('#mmModels').onclick=()=>modelPickerOpen('mmModelList');
 $('[data-s=mmVoice]').addEventListener('input',e=>{S.settings.mmVoice=e.target.value.trim();save('settings')});
 $('#mmCustomVoice').onclick=async()=>{
   const r=await formSheet('自定义 MiniMax 音色',[{k:'voice',t:'text',l:'你生成或克隆的 voice_id'}],{voice:S.settings.mmVoice});
@@ -2732,14 +2729,10 @@ $('#naiPresetDuplicate').onclick=()=>{naiPresetsInit();const old=S.settings.naiP
 $('#naiPresetDelete').onclick=async()=>{naiPresetsInit();if(S.settings.naiPresets.length<2)return toast('至少保留一套预设');if(await actionSheet([{label:'删除这套预设',danger:true}],'确定删除当前生图预设？其他预设不会受影响。')!==0)return;S.settings.naiPresets=S.settings.naiPresets.filter(p=>p.id!==S.settings.naiPresetActive);S.settings.naiPresetActive=S.settings.naiPresets[0].id;naiPresetsSync();await save('settings');naiPresetRender()};
 
 /* ========== 设置 App ========== */
-function renderSettings(){naiPresetsInit();renderGhStat();$$('[data-s]').forEach(el=>{const v=S.settings[el.dataset.s];if(el.type==='checkbox')el.checked=!!v;else el.value=v??''});updShow();naiPresetRender()}
+function renderSettings(){naiPresetsInit();renderGhStat();$$('[data-s]').forEach(el=>{const v=S.settings[el.dataset.s];if(el.type==='checkbox')el.checked=!!v;else el.value=v??''});updShow();naiPresetRender();if(typeof modelPickerRestore==='function')modelPickerRestore()}
 $$('[data-s]').forEach(el=>el.addEventListener('change',()=>{const k=el.dataset.s;S.settings[k]=el.type==='checkbox'?el.checked:el.type==='number'?+el.value:el.value.trim();save('settings');updShow()}));
 $('#testApi').onclick=async()=>{toast('测试中…',8000);try{const r=await callAPI([{role:'user',content:'只回复四个字：连接成功'}],{max_tokens:30});toast('✓ '+clean(r).slice(0,40))}catch(e){toast(e.message,5000)}};
-$('#fetchModels').onclick=async()=>{
-  const s=S.settings;if(!s.baseUrl||!s.apiKey)return toast('先填 API 地址和密钥');
-  try{const r=await fetch(s.baseUrl.replace(/\/+$/,'')+'/models',{headers:{Authorization:'Bearer '+s.apiKey}});if(!r.ok)throw new Error('接口报错 '+r.status);
-    const ids=((await r.json()).data||[]).map(m=>m.id);$('#modelList').innerHTML=ids.map(i=>`<option value="${esc(i)}">`).join('');toast(`拉到 ${ids.length} 个模型，点「模型」输入框选择`)}catch(e){toast(e.message,4000)}
-};
+$('#fetchModels').onclick=()=>modelPickerFetch('modelList');
 function buildBackup(lite){
   const data={app:'moonsea-phone',v:2,at:new Date().toISOString()};for(const k in DEFAULTS)data[k]=structuredClone(S[k]);
   data.chars=S.chars.map(c=>c.api?{...c,api:{...c.api,key:''}}:c);data.threads=S.threads.map(t=>lite?{...t,msgs:t.msgs.map(({audio,...m})=>m)}:t);data.settings={...data.settings,apiKey:'',ttsKey:'',visKey:'',imgKey:'',naiKey:'',mmKey:'',ghToken:''};return data;
@@ -2866,6 +2859,7 @@ function underColor(){
 <script src="star-library.js"></script>
 <script src="visitors.js"></script>
 <script src="visitors-city.js"></script>
+<script src="model-picker.js"></script>
 <script>
 /* ========== 启动 ========== */
 (async()=>{
