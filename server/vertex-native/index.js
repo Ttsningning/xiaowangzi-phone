@@ -61,4 +61,5 @@ export async function handle(req,env,fetcher=fetch){
  return new Response(upstream.body,{headers:{'Content-Type':input.stream?'text/event-stream; charset=utf-8':'application/json; charset=utf-8','Cache-Control':'no-store','Access-Control-Allow-Origin':ORIGIN,'Vary':'Origin'}});
  }catch(e){return json({error:{message:e.status?e.message:'认证服务暂时不可用，请稍后重试'}},e.status||502)}
 }
-export default {fetch:handle};
+// Cloudflare passes ExecutionContext as its third argument; it is not a fetch function.
+export default {fetch(request,env,_ctx){return handle(request,env)}};
