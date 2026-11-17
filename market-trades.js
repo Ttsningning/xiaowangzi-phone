@@ -80,7 +80,7 @@ async function wmTrade(id,quoteId=null){
   // wallet/backpack actions cannot spend the same stock or items twice.
   if(mode==='barter')for(const i of items){let left=i.qty;for(const b of wallet.bag){if(b.name!==i.name||b.qty<=0||(l.type==='wanted'&&b.kind==='token'))continue;const n=Math.min(left,b.qty);b.qty-=n;left-=n;if(!left)break;}}
   if(l.type==='wanted')wmMoney(total,'万界求购 · '+l.name);else if(mode==='cash')wmMoney(-total,'万界杂货铺 · '+l.name+' ×'+qty);
-  l.stock-=qty;l.sold=(+l.sold||0)+qty;const o={id:uid(),name:l.name,desc:l.desc,seller:l.seller,qty,at:Date.now(),payment,paymentMode:mode,unitPrice:mode==='cash'?unit:null,quoteId:q?.id||null,status:l.type==='wanted'?'fulfilled':l.preorder?'preorder':'delivered',due:Date.now()+(l.hours||24)*3600000,listingId:l.id};market.orders.unshift(o);delete l.deal;if(q){q.status='consumed';q.orderId=o.id}wmSocialPurchase(l,o);
+  l.stock-=qty;l.sold=(+l.sold||0)+qty;const o={id:uid(),name:l.name,desc:l.desc,seller:l.seller,qty,at:Date.now(),payment,paymentMode:mode,unitPrice:mode==='cash'?unit:null,quoteId:q?.id||null,status:l.type==='wanted'?'fulfilled':l.preorder?'preorder':'delivered',due:Date.now()+(l.hours||24)*3600000,listingId:l.id,buyer:{id:'user',name:S.user.name}};market.orders.unshift(o);delete l.deal;if(q){q.status='consumed';q.orderId=o.id}wmSocialPurchase(l,o);
   if(l.type!=='wanted'&&!l.preorder)wallet.bag.push({id:uid(),name:l.name,desc:l.desc,kind:'goods',qty,from:l.seller,at:Date.now(),source:'market',orderId:o.id});
   wmFeed(`${S.user.name}${l.type==='wanted'?'完成求购':'买下'}「${l.name}」×${qty}。`);await Promise.all([save('wallet'),save('market')]);wmRenderMarket();toast(l.preorder?'预订好了，到货会放入百宝箱':'成交啦，物品已放入百宝箱 ✦');
  }finally{wmTradeLocks.delete(id)}

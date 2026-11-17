@@ -9,7 +9,7 @@ function modelPickerIds(json){
 function modelPickerContext(list){
  const p=MODEL_PICKERS[list],s=S.settings;if(!p||!s)return null;let base='',key='',owner='',fmt='openai';
  if(list==='caModelList'){const c=editingChar();if(!c)return null;owner=c.id;base=c.api?.base||'';key=c.api?.key||'';fmt=c.api?.fmt||'openai'}
- else if(list==='modelList'){base=s.baseUrl||'';key=s.apiKey||''}
+ else if(list==='modelList'){base=s.baseUrl||'';key=s.apiKey||'';fmt=s.apiFormat||'openai'}
  else if(list==='mmModelList'){base=s.mmHost||'https://api.minimaxi.com';key=s.mmKey||'';fmt='builtin'}
  else{const prefix={ttsModelList:'tts',visModelList:'vis',imgModelList:'img'}[list];base=s[prefix+'Base']||s.baseUrl||'';key=s[prefix+'Key']||s.apiKey||''}
  base=base.trim().replace(/\/+$/,'');return {list,owner,base,key,fmt,scope:JSON.stringify([list,owner,base,fmt])};

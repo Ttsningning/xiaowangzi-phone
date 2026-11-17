@@ -1,2 +1,9 @@
 node_modules/
 dist/
+
+# Service credentials stay outside the repository and static build.
+.env
+.env.*
+!.env.example
+*service-account*.json
+*credentials*.json

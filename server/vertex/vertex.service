@@ -1,0 +1,21 @@
+[Unit]
+Description=Xiaowangzi official Vertex bridge
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=vertex
+Group=vertex
+WorkingDirectory=/opt/xiaowangzi-vertex
+EnvironmentFile=/etc/xiaowangzi/vertex.env
+ExecStart=/usr/bin/node /opt/xiaowangzi-vertex/server.mjs
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

@@ -95,7 +95,7 @@ async function wmProfile(person){
   try{
     const market=S.market,listing=market.listings.find(l=>l.id===person.listingId);
     const history=wmCommentThread(person.listingId||person.id).comments.filter(c=>c.personId===person.id||c.user).slice(-12).map(c=>(c.user?S.user.name:person.name)+'：'+c.text).join('\n');
-    const out=await wmMarketAPI([{role:'system',content:'为小手机里的虚构成年角色生成可长期聊天的人设。严格沿用已知身份、来源世界、商品线索和留言口吻，不把卖家误当成留影里的人。subject表示物品中的人物本人。若姓名未知，补全一个合适姓名。只输出 JSON {"name":"姓名","description":"身份、经历、外貌和目标，约300字","personality":"立体性格","scenario":"与用户因物品或集市相遇的当前背景","first_mes":"加好友后的第一句话","look":"成年角色外貌","mes_example":"对话示例"}。不替用户行动或默认恋爱关系。'},{role:'user',content:wmContext()+'\n人物身份：'+JSON.stringify(person)+'\n商品：'+JSON.stringify(listing||{})+'\n既有互动：'+history}],{char:charById(curT().members[0]),max_tokens:2200,temperature:.9});
+    const out=await wmMarketAPI([{role:'system',content:'为小手机里的虚构成年角色生成可长期聊天的人设。严格沿用已知身份、来源世界、商品线索和留言口吻，不把卖家误当成留影里的人。subject表示物品中的人物本人。若姓名未知，补全一个合适姓名。只输出 JSON {"name":"姓名","description":"身份、经历、外貌和目标，约300字","personality":"立体性格","scenario":"与用户因物品或集市相遇的当前背景","first_mes":"加好友后的第一句话","look":"成年角色外貌","mes_example":"对话示例"}。不替用户行动或默认恋爱关系。'},{role:'user',content:wmContext()+'\n人物身份：'+JSON.stringify(person)+'\n商品：'+JSON.stringify(listing||{})+'\n程序确认的交易事实：'+JSON.stringify(listing?wmTradeFacts(listing):{userOrders:[]})+'\n既有互动：'+history}],{char:charById(curT().members[0]),max_tokens:2200,temperature:.9});
     if(S.market!==market||market.social.people[person.id]!==person)throw Error('存档已经切换，请重新打开这封来信');
     const j=parseJSON(out),name=person.role==='subject'?(wmText(j.name,60)||person.name):person.name,description=wmText(j.description,6000),personality=wmText(j.personality,3000),scenario=wmText(j.scenario,4000),first_mes=wmText(j.first_mes,2000);
     if(!description||!personality||!scenario||!first_mes)throw Error('人物资料不完整，请重试');
@@ -116,6 +116,14 @@ async function wmAcceptRequest(id){
     r.status='accepted';r.charId=c.id;save('market');syncUnread();updateBadges();toast('「'+c.name+'」已经加入联系人，可以继续聊天啦 ✦');
   }finally{wmSocialBusy.delete(lock);wmRenderMarket();}
 }
+// Orders, not model guesses or old comments, are the source of truth.
+function wmTradeFacts(l){
+  const orders=(S.market.orders||[]).filter(o=>o.listingId===l.id||(!o.listingId&&o.name===l.name&&o.seller===l.seller));
+  return {currentUser:{id:'user',name:S.user.name},anonymous:false,listingId:l.id,stock:l.stock,
+    userOrders:orders.slice(0,20).map(o=>({orderId:o.id,buyerId:o.buyer?.id||'user',buyerNameAtPurchase:o.buyer?.name||S.user.name,quantity:o.qty,status:o.status,paymentMode:o.paymentMode||(l.need?'barter':'cash'),at:o.at})),
+    userQuantity:orders.reduce((n,o)=>n+(Number(o.qty)||0),0),
+    rule:'这些是程序确认的本商品订单。userOrders中的买家就是当前用户，非匿名，卖家知道该用户已成交；preorder表示已预订待到货，delivered表示已交付，fulfilled表示用户完成求购交付。库存为零不代表被别人抢走；可能正是当前用户买完。没有订单时不把留言中的购买意向当成交。不得从零库存推测其他买家，不得编造付款、发货、退款、补货或好友关系。旧留言若与订单冲突，按此事实纠正，不再延续误会。'};
+}
 async function wmSocialTalk(id,post){
   const l=S.market.listings.find(l=>l.id===id);if(!l)return;
   const lock='comments:'+id;if(wmSocialBusy.has(lock))return;
@@ -125,7 +133,7 @@ async function wmSocialTalk(id,post){
   try{
     const known=Object.values(S.market.social.people).filter(p=>p.listingId===id).map(p=>({name:p.name,role:p.role,world:p.world}));
     const history=t.comments.slice(-20).map(c=>({name:c.user?S.user.name:S.market.social.people[c.personId]?.name||'旅人',role:c.user?'user':S.market.social.people[c.personId]?.role,text:c.text}));
-    const out=await wmMarketAPI([{role:'system',content:'你在经营一个有延续性的虚构万界商品留言区。生成卖家、买家和围观者的短留言；接着已有对话回复用户，保留已出现人物的身份和口吻。卖家可以拒绝、讨价还价，旁人可以提问、打趣、讲物品来历。不得替user发言，不得声称user已付款、已加好友或已拥有商品。所有角色均成年。只输出 JSON {"comments":[{"name":"姓名","role":"seller或buyer或bystander","text":"留言","tradeOffers":[]}],"offer":{"price":100,"reason":"卖家的议价理由"}}。最多3条，至少一条卖家留言（使用商品中的seller姓名）。只有用户本轮明确讨价还价且卖家同意时才返回offer，否则offer为null；报价是用户货币的每件价格，必须在底价与当前价格之间；求购和以物换物不得返回offer。'+(typeof WM_QUOTE_SCHEMA!=='undefined'?WM_QUOTE_SCHEMA:'')},{role:'user',content:wmContext()+'\n商品：'+JSON.stringify({name:l.name,seller:l.seller,world:l.world,desc:l.desc,price:l.price,floor:l.floor,stock:l.stock,type:l.type,need:l.need})+'\n已有人物：'+JSON.stringify(known)+'\n留言历史：'+JSON.stringify(history)+'\n本轮用户留言：'+(post?history.at(-1)?.text:'无，只听听摊位上的人聊天，不新增优惠报价')}],{char:charById(curT().members[0]),max_tokens:1500,temperature:.95});
+    const out=await wmMarketAPI([{role:'system',content:'你在经营一个有延续性的虚构万界商品留言区。生成卖家、买家和围观者的短留言；接着已有对话回复用户，保留已出现人物的身份和口吻。卖家可以拒绝、讨价还价，旁人可以提问、打趣、讲物品来历。不得替user发言，交易身份与是否成交严格依据程序提供的交易事实；允许承认已记录的成交，禁止创造未记录的付款、拥有物品或好友关系。所有角色均成年。只输出 JSON {"comments":[{"name":"姓名","role":"seller或buyer或bystander","text":"留言","tradeOffers":[]}],"offer":{"price":100,"reason":"卖家的议价理由"}}。最多3条，至少一条卖家留言（使用商品中的seller姓名）。只有用户本轮明确讨价还价且卖家同意时才返回offer，否则offer为null；报价是用户货币的每件价格，必须在底价与当前价格之间；求购和以物换物不得返回offer。'+(typeof WM_QUOTE_SCHEMA!=='undefined'?WM_QUOTE_SCHEMA:'')},{role:'user',content:wmContext()+'\n商品：'+JSON.stringify({name:l.name,seller:l.seller,world:l.world,desc:l.desc,price:l.price,floor:l.floor,stock:l.stock,type:l.type,need:l.need})+'\n程序确认的交易事实：'+JSON.stringify(wmTradeFacts(l))+'\n已有人物：'+JSON.stringify(known)+'\n留言历史：'+JSON.stringify(history)+'\n本轮用户留言：'+(post?history.at(-1)?.text:'无，只听听摊位上的人聊天，不新增优惠报价')}],{char:charById(curT().members[0]),max_tokens:1500,temperature:.95});
     // An imported backup may have replaced the market while the request was in flight.
     if(!S.market.listings.includes(l)||S.market.social.threads[id]!==t)return;
     const j=parseJSON(out),comments=Array.isArray(j.comments)?j.comments.slice(0,3):[];let added=0,sellerSpoke=false;const addedComments=[];

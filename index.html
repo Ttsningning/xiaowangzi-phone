@@ -743,7 +743,7 @@ input,textarea,select{font:inherit;color:var(--text)}
         <div class="field"><label for="charTimeAware">时间感知</label><select id="charTimeAware"><option value="inherit">跟随全局设置</option><option value="on">开启 · 感知真实时间与聊天间隔</option><option value="off">关闭 · 按剧情时间相处</option></select><div class="hint">每个角色单独保存。单聊按此设置；群聊全部成员开启时才加入真实时间。</div></div>
         <div class="field"><label>语音音色</label><input data-c="voice" placeholder="MiniMax 填 voice_id（如 male-qn-jingying），OpenAI 兼容填 alloy 之类"><div class="hint">不填就用设置里的默认音色。用系统朗读时可以填系统声音名里的一个词。</div></div>
         <div class="field"><label>专属 API（选填）</label><div class="hint" style="margin:0 0 8px">三项都填好，这个角色就用自己的接口说话（聊天、见面、朋友圈、日记、查手机、记忆整理）；留空就用设置里的公共 API。</div>
-          <select data-ca="fmt"><option value="openai">OpenAI 兼容（中转 / 大多数平台）</option><option value="anthropic">Anthropic 官方（Claude）</option></select></div>
+          <select data-ca="fmt"><option value="openai">OpenAI 兼容（中转 / 大多数平台）</option><option value="anthropic">Anthropic 官方（Claude）</option><option value="vertex">Google Vertex（官方 · 服务端转发）</option></select></div>
         <div class="field"><label>接口地址</label><input data-ca="base" placeholder="https://api.anthropic.com 或 https://xxx/v1"></div>
         <div class="field"><label>密钥</label><input data-ca="key" type="password" placeholder="sk-..."></div>
         <div class="field"><label>模型</label><input data-ca="model" list="caModelList"><datalist id="caModelList"></datalist></div>
@@ -811,6 +811,9 @@ input,textarea,select{font:inherit;color:var(--text)}
     <div class="body pad">
       <div class="card glass">
         <h3>主体 AI 接口</h3>
+        <div class="field"><label>渠道</label><select data-s="apiFormat"><option value="openai">OpenAI 兼容</option><option value="vertex">Google Vertex（官方 · 服务端转发）</option></select></div>
+        <p class="hint" id="vertexHelp" hidden>Vertex：下方填写你自己的 HTTPS 转发地址（以 /v1 结尾）和转发访问密钥。服务账号 JSON、项目和区域在 VPS 配置，不在网页上传。模型列表来自服务器允许使用的模型；隐式缓存由 Google 自动判断，命中不保证，不创建收费的显式缓存。语音合成与通用生图请分别填写独立接口，不能借用这个转发地址。</p>
+        <p class="hint" id="vertexUsage" hidden></p>
         <div class="field"><label>API 地址</label><input data-s="baseUrl" placeholder="https://api.deepseek.com/v1"><div class="hint">填 OpenAI 兼容格式的地址，一般以 /v1 结尾。</div></div>
         <div class="field"><label>API 密钥</label><input data-s="apiKey" type="password" placeholder="sk-..."></div>
         <div class="field"><label>模型</label><input data-s="model" list="modelList" placeholder="deepseek-chat"><datalist id="modelList"></datalist></div>
@@ -1784,7 +1787,10 @@ function buildPrompt(T,mode,extra,now=Date.now()){
   if(tail.length){if(msgs.at(-1).role==='user')msgs.at(-1).content+='\n'+tail.join('\n');else msgs.push({role:'user',content:tail.join('\n')})}
   if(msgs.at(-1).role!=='user')msgs.push({role:'user',content:'[开始]'});
   if(P.post?.trim())msgs.push({role:'system',content:mac(P.post)});
-  msgs.cache={A,B,D,hist,tail};
+  const selectedWorld=S.world.books.filter(b=>b.enabled).flatMap(b=>b.entries).filter(e=>S.world.last.includes(e.id)).sort((a,b)=>a.order-b.order);
+  const stableWorld=selectedWorld.filter(e=>e.constant).map(e=>e.content.trim()).join('\n\n'),triggeredWorld=selectedWorld.filter(e=>!e.constant).map(e=>e.content.trim()).join('\n\n');
+  const vertexA=A+(stableWorld?'\n【常驻世界设定】\n'+mac(stableWorld):''),vertexD=[triggeredWorld?'【触发的世界设定】\n'+mac(triggeredWorld):'',mac(dyn.slice(wiTxt.length)).trim(),mac(P.post||'').trim()].filter(Boolean).join('\n\n');
+  msgs.cache={A,B,D,hist,tail,vertexA,vertexD};
   return msgs;
 }
 const clean=t=>t.replace(/<think>[\s\S]*?<\/think>/g,'').replace(/^\s*\[(线上|线下|场景|提示)[^\]]*\]\s*/gm,'').trim();
@@ -1794,7 +1800,7 @@ const ownAPI=c=>{const a=c?.api;return a&&a.base&&a.key&&a.model?a:null};
 const anthHead=key=>({'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'});
 function anthStat(c,u){if(!c||!u)return;c.apiStat={r:u.cache_read_input_tokens||0,w:u.cache_creation_input_tokens||0,n:u.input_tokens||0,o:u.output_tokens||0,ts:Date.now()};saveChars();
   if($('#app-char').classList.contains('open')&&charEdit===c.id)showStat(c)}
-function showStat(c){const el=$('#caStat');if(!el)return;const t=c?.apiStat;el.textContent=t?`上次（${fmtTime(t.ts)}）：缓存读取 ${t.r} · 写入缓存 ${t.w} · 未缓存 ${t.n} · 输出 ${t.o} tokens`:'还没有用专属 API 说过话'}
+function showStat(c){if(c?.api?.fmt==='vertex'&&typeof vertexShowStat==='function')return vertexShowStat(c);const el=$('#caStat');if(!el)return;const t=c?.apiStat;el.textContent=t?`上次（${fmtTime(t.ts)}）：缓存读取 ${t.r} · 写入缓存 ${t.w} · 未缓存 ${t.n} · 输出 ${t.o} tokens`:'还没有用专属 API 说过话'}
 /* Anthropic 官方 + 提示缓存：人设一个断点，记忆一个断点，聊天记录末尾一个断点，时间和世界书放在断点后面 */
 const useAIStream=opt=>!!(opt.stream??(S.settings.stream&&typeof opt.onDelta==='function'));
 async function readAIResponse(r,opt={},anth=false){
@@ -1851,6 +1857,7 @@ async function anthCached(own,opt,K,temperature,max_tokens){
 async function callAPI(messages,opt={}){
   const s=S.settings,own=ownAPI(opt.char);
   const temperature=+(opt.temperature??s.temperature),max_tokens=+(opt.max_tokens??s.maxTokens);
+  if((own?own.fmt:s.apiFormat)==='vertex')return vertexCall(messages,opt,own||{base:s.baseUrl,key:s.apiKey,model:s.model},temperature,max_tokens);
   if(own&&own.fmt==='anthropic'){
     if(messages.cache)return anthCached(own,opt,messages.cache,temperature,max_tokens);
     const sys=messages.filter(m=>m.role==='system').map(m=>m.content).join('\n\n'),ms=[];
@@ -2125,7 +2132,7 @@ async function playVoice(T,m,el){
   try{
     if(!m.audio&&st.ttsMode==='minimax'&&m.role!=='user'){m.audio=await mmSpeak(m.content,c?.voice);saveMsgs(T)}
     if(m.audio||(st.ttsMode==='api'&&m.role!=='user')){
-      if(!m.audio){const base=(st.ttsBase||st.baseUrl).replace(/\/+$/,''),key=st.ttsKey||st.apiKey;
+      if(!m.audio){if(st.apiFormat==='vertex'&&!st.ttsBase)throw Error('请单独填写语音接口');const base=(st.ttsBase||st.baseUrl).replace(/\/+$/,''),key=st.ttsKey||st.apiKey;
         const r=await fetch(base+'/audio/speech',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+key},body:JSON.stringify({model:st.ttsModel||'tts-1',input:m.content,voice:c?.voice||st.ttsVoice||'alloy'})});
         if(!r.ok)throw new Error('语音接口报错 '+r.status);const blob=await r.blob();
         m.audio=await new Promise(res=>{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.readAsDataURL(blob)});saveMsgs(T)}
@@ -2313,10 +2320,11 @@ async function replyComment(p,cid,text){
 }
 
 /* ========== 识图 & 生图 ========== */
-const imgReady=()=>{const s=S.settings;if(s.imgProv==='nai')return !!s.naiKey;return !!(s.imgModel&&(s.imgKey||s.apiKey)&&(s.imgBase||s.baseUrl))};
+const imgReady=()=>{const s=S.settings;if(s.imgProv==='nai')return !!s.naiKey;return !!((s.apiFormat!=='vertex'||s.imgBase)&&s.imgModel&&(s.imgKey||s.apiKey)&&(s.imgBase||s.baseUrl))};
 async function caption(img){
   const s=S.settings,base=(s.visBase||s.baseUrl||'').replace(/\/+$/,''),key=s.visKey||s.apiKey,model=s.visModel||s.model;
   if(!base||!key||!model)throw new Error('还没设置识图模型');
+  if(s.apiFormat==='vertex'&&!s.visBase)return clean(await vertexCall([{role:'user',content:[{type:'text',text:'用中文描述这张照片的内容、人物动作、场景和文字，100字以内。'},{type:'image_url',image_url:{url:img}}]}],{}, {base,key,model},.3,400));
   const r=await fetch(base+'/chat/completions',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+key},body:JSON.stringify({model,max_tokens:400,temperature:.3,
     messages:[{role:'user',content:[{type:'text',text:'用中文详细描述这张照片的内容：画面里有什么、人物的动作表情、场景、光线氛围、上面的文字。只输出描述，100字以内。'},{type:'image_url',image_url:{url:img}}]}]})});
   if(!r.ok)throw new Error(`识图接口报错 ${r.status}（这个模型可能不支持看图）`);
@@ -2324,6 +2332,7 @@ async function caption(img){
 }
 async function genImage(desc,c,meta,options={}){
   if(S.settings.imgProv==='nai')return naiImage(desc,c,false,meta,options);
+  if(S.settings.apiFormat==='vertex'&&!S.settings.imgBase)throw Error('请单独填写生图接口，Vertex 聊天转发不提供通用生图');
   const s={...S.settings},base=(s.imgBase||s.baseUrl).replace(/\/+$/,''),key=s.imgKey||s.apiKey;
   const look=c?.look?`画面中如果出现${c.name}，外貌是：${c.look}。`:'';const ulook=S.user.look?`画面中如果出现${S.user.name}，外貌是：${S.user.look}。`:'';
   const prompt=options.mode==='raw'?options.prompt:`${desc}。${look}${ulook}${s.imgStyle||''}`;if(!String(prompt||'').trim())throw Error('请先填写生图提示词');
@@ -2431,7 +2440,7 @@ $('#mmVoices').onclick=async()=>{if(!S.settings.mmKey)return toast('先填 MiniM
 $('#ttsTest').onclick=async()=>{const st=S.settings,txt=$('#ttsTestText').value.trim()||'你好呀';
   try{toast('生成中…',8000);let src;
     if(st.ttsMode==='minimax')src=await mmSpeak(txt);
-    else if(st.ttsMode==='api'){const base=(st.ttsBase||st.baseUrl).replace(/\/+$/,''),key=st.ttsKey||st.apiKey;const r=await fetch(base+'/audio/speech',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+key},body:JSON.stringify({model:st.ttsModel||'tts-1',input:txt,voice:st.ttsVoice||'alloy'})});if(!r.ok)throw new Error('语音接口报错 '+r.status);src=URL.createObjectURL(await r.blob())}
+    else if(st.ttsMode==='api'){if(st.apiFormat==='vertex'&&!st.ttsBase)throw Error('请单独填写语音接口，Vertex 聊天转发不提供语音合成');const base=(st.ttsBase||st.baseUrl).replace(/\/+$/,''),key=st.ttsKey||st.apiKey;const r=await fetch(base+'/audio/speech',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+key},body:JSON.stringify({model:st.ttsModel||'tts-1',input:txt,voice:st.ttsVoice||'alloy'})});if(!r.ok)throw new Error('语音接口报错 '+r.status);src=URL.createObjectURL(await r.blob())}
     else{const u=new SpeechSynthesisUtterance(txt);u.lang='zh-CN';speechSynthesis.speak(u);toast('用手机自带朗读');return}
     stopVoice();vAudio=new Audio(src);await vAudio.play();toast('▶ 正在播放')}catch(e){toast(e.message,5000)}};
 $('#imgTest').onclick=async()=>{if(!imgReady())return toast('先把生图设置填完整');const d=$('#imgTestText').value.trim()||'星空下的小王子和狐狸';
@@ -2729,8 +2738,8 @@ $('#naiPresetDuplicate').onclick=()=>{naiPresetsInit();const old=S.settings.naiP
 $('#naiPresetDelete').onclick=async()=>{naiPresetsInit();if(S.settings.naiPresets.length<2)return toast('至少保留一套预设');if(await actionSheet([{label:'删除这套预设',danger:true}],'确定删除当前生图预设？其他预设不会受影响。')!==0)return;S.settings.naiPresets=S.settings.naiPresets.filter(p=>p.id!==S.settings.naiPresetActive);S.settings.naiPresetActive=S.settings.naiPresets[0].id;naiPresetsSync();await save('settings');naiPresetRender()};
 
 /* ========== 设置 App ========== */
-function renderSettings(){naiPresetsInit();renderGhStat();$$('[data-s]').forEach(el=>{const v=S.settings[el.dataset.s];if(el.type==='checkbox')el.checked=!!v;else el.value=v??''});updShow();naiPresetRender();if(typeof modelPickerRestore==='function')modelPickerRestore()}
-$$('[data-s]').forEach(el=>el.addEventListener('change',()=>{const k=el.dataset.s;S.settings[k]=el.type==='checkbox'?el.checked:el.type==='number'?+el.value:el.value.trim();save('settings');updShow()}));
+function renderSettings(){naiPresetsInit();renderGhStat();$$('[data-s]').forEach(el=>{const v=S.settings[el.dataset.s];if(el.type==='checkbox')el.checked=!!v;else el.value=v??''});updShow();if(typeof vertexRender==='function')vertexRender();naiPresetRender();if(typeof modelPickerRestore==='function')modelPickerRestore()}
+$$('[data-s]').forEach(el=>el.addEventListener('change',()=>{const k=el.dataset.s;S.settings[k]=el.type==='checkbox'?el.checked:el.type==='number'?+el.value:el.value.trim();save('settings');updShow();if(typeof vertexRender==='function')vertexRender()}));
 $('#testApi').onclick=async()=>{toast('测试中…',8000);try{const r=await callAPI([{role:'user',content:'只回复四个字：连接成功'}],{max_tokens:30});toast('✓ '+clean(r).slice(0,40))}catch(e){toast(e.message,5000)}};
 $('#fetchModels').onclick=()=>modelPickerFetch('modelList');
 function buildBackup(lite){
@@ -2860,6 +2869,7 @@ function underColor(){
 <script src="visitors.js"></script>
 <script src="visitors-city.js"></script>
 <script src="model-picker.js"></script>
+<script src="vertex-api.js"></script>
 <script>
 /* ========== 启动 ========== */
 (async()=>{
