@@ -38,6 +38,7 @@ function modelPickerOpen(list){
  $('#mask').classList.add('show');sheet.classList.add('show');
 }
 async function modelPickerFetch(list){
+ if(list==='modelList'&&S.settings.apiFormat==='vertex'&&typeof vertexConfigConnection==='function'){try{vertexConfigConnection()}catch(e){return toast(e.message)}}
  if(list==='caModelList')readCharForm();const context=modelPickerContext(list);if(!context)return toast('先选择一个角色');
  if(!context.base||!context.key)return toast('先填接口地址和密钥');if(modelFetchLocks.has(list))return;
  const button=list==='modelList'?$('#fetchModels'):list==='caModelList'?$('#caFetch'):document.querySelector('[data-fm="'+({ttsModelList:'tts',visModelList:'vis',imgModelList:'img'}[list]||'')+'"]');

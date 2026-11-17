@@ -7,21 +7,14 @@ const dom=new JSDOM(html,{url:'https://example.test/',runScripts:'dangerously',v
 const w=dom.window,ev=x=>w.eval(x),check=(label,x)=>{assert.ok(ev(x),label);console.log('PASS',label)};
 (async()=>{
  for(let n=0;n<100;n++){if(ev('!!S.chars?.length&&!!S.vertexUsage'))break;await new Promise(r=>setTimeout(r,20))}
- ev(`S.settings.proactive=false;S.settings.apiFormat='vertex';S.settings.baseUrl='https://bridge.test/v1';S.settings.apiKey='bridge-test-key';S.settings.model='gemini-test';renderSettings();var configCalls=[],configSaved=false;fetch=async(url,options={})=>{configCalls.push({url,options});return {ok:true,json:async()=>options.method==='POST'?{ready:true,project:'test-project',account:'phone@test-project.iam.gserviceaccount.com',location:JSON.parse(options.body).location,models:JSON.parse(options.body).models}:{ready:configSaved,project:null,account:null,location:'global',models:['gemini-test']}}}`);
- check('Vertex setup renders only on the Vertex channel',`!$('#vertexConfigPanel').hidden&&$('#vertexRegion').value==='global'`);
- await ev(`vertexLoadConfig()`);check('connection reports missing account without claiming Google verification',`$('#vertexAccountStatus').textContent.includes('尚未保存服务账号')`);
- ev(`var fakeAccount={type:'service_account',project_id:'test-project',client_email:'phone@test-project.iam.gserviceaccount.com',private_key:'PRIVATE KEY TEST ONLY'};$('#vertexJson').value=JSON.stringify(fakeAccount);vertexValidateLocal()`);
- check('format validation never sends credentials or claims saved status',`configCalls.length===1&&$('#vertexAccountStatus').textContent.includes('尚未验证')`);
- check('credentials are excluded from full backups',`!JSON.stringify(buildBackup()).includes('PRIVATE KEY TEST ONLY')`);
- ev(`$('#vertexAdminKey').value='temporary-admin-secret';$('#vertexRegion').value='us-central1'`);await ev(`vertexSaveConfig()`);
- check('save sends account only to selected backend and clears transient secrets',`configCalls.at(-1).url==='https://bridge.test/v1/config'&&configCalls.at(-1).options.headers['X-Vertex-Admin-Token']==='temporary-admin-secret'&&JSON.parse(configCalls.at(-1).options.body).location==='us-central1'&&$('#vertexJson').value===''&&$('#vertexAdminKey').value===''&&$('#vertexAccountStatus').textContent.includes('已保存')`);
- check('backup after save still contains no admin key or JSON private key',`!JSON.stringify(buildBackup()).includes('temporary-admin-secret')&&!JSON.stringify(buildBackup()).includes('PRIVATE KEY TEST ONLY')`);
- ev(`$('#vertexRegion').value='global';$('#vertexAdminKey').value='temporary-admin-secret'`);await ev(`vertexSaveConfig()`);
- check('region/model can update without re-uploading saved JSON',`!('credentials' in JSON.parse(configCalls.at(-1).options.body))&&JSON.parse(configCalls.at(-1).options.body).location==='global'`);
- ev(`$('#vertexJson').value=JSON.stringify(fakeAccount);$('#vertexAdminKey').value='temporary-admin-secret';fetch=async()=>({ok:false,status:422,json:async()=>({error:{message:'Google 身份验证失败，旧配置已保留'}})})`);await ev(`vertexSaveConfig()`);
- check('failed save retains editable JSON and clears admin key',`$('#vertexJson').value.includes('PRIVATE KEY TEST ONLY')&&$('#vertexAdminKey').value===''&&$('#vertexAccountStatus').textContent.includes('旧配置已保留')`);
- ev(`fetch=async()=>({ok:false,status:404,json:async()=>({})})`);await ev('vertexLoadConfig()');check('older backend gives actionable upgrade message',`$('#vertexAccountStatus').textContent.includes('升级 VPS 后台')`);
- ev(`var testTarget;vertexCall=async(m,o,c)=>{testTarget=c;return '连接成功'}`);await ev('vertexTestConfig()');check('test uses native transport and clearly reports success',`testTarget.model==='gemini-test'&&$('#vertexAccountStatus').textContent.includes('模型测试成功')`);
- ev(`S.settings.apiFormat='openai';renderSettings()`);check('OpenAI settings remain available and hide account management',`$('#vertexConfigPanel').hidden&&$('[data-s=baseUrl]').closest('.field').querySelector('label').textContent==='API 地址'`);
- assert.deepEqual(errors,[]);console.log('Vertex setup UI checks passed');w.close();
+ ev(`S.settings.proactive=false;S.settings.apiFormat='vertex';S.settings.apiKey='';S.settings.model='';renderSettings();var calls=[];fetch=async(url,options={})=>{calls.push({url,options});return {ok:true,json:async()=>({ready:true,project:'test-project',account:'phone@test-project.iam.gserviceaccount.com',location:'global',ticket:'vx1.encrypted.test',models:[]})}}`);
+ check('Vertex hides backend address and all API key fields',`$('[data-s=baseUrl]').closest('.field').hidden&&$('[data-s=apiKey]').closest('.field').hidden&&!document.querySelector('#vertexAdminKey')`);
+ check('no transport configuration required',`!$('#vertexConfigPanel').hidden&&$('#vertexRegion').value==='global'`);
+ ev(`$('#vertexJson').value=JSON.stringify({type:'service_account',project_id:'test-project',client_email:'phone@test-project.iam.gserviceaccount.com',private_key:'PRIVATE KEY TEST ONLY'});vertexValidateLocal()`);
+ check('local JSON check does not call an API',`calls.length===0`);await ev('vertexSaveConfig()');
+ check('JSON alone connects, without model or backend address',`calls.length===1&&calls[0].url===VERTEX_NATIVE_BASE+'/config'&&!calls[0].options.headers.Authorization&&S.settings.apiKey==='vx1.encrypted.test'&&$('#vertexJson').value===''`);
+ check('backup excludes encrypted bearer and plain JSON',`!JSON.stringify(buildBackup()).includes('vx1.encrypted.test')&&!JSON.stringify(buildBackup()).includes('PRIVATE KEY TEST ONLY')`);
+ ev(`$('[data-s=model]').value='gemini-test';vertexCall=async()=> '连接成功'`);await ev('vertexTestConfig()');check('native test is available after account import',`$('#vertexAccountStatus').textContent.includes('模型测试成功')`);
+ ev(`S.settings.apiFormat='openai';renderSettings()`);check('OpenAI connection fields return on switching channel',`!$('[data-s=baseUrl]').closest('.field').hidden&&$('#vertexConfigPanel').hidden`);
+ assert.deepEqual(errors,[]);console.log('Direct JSON Vertex setup checks passed');w.close();
 })().catch(e=>{console.error(e);w.close();process.exitCode=1});
