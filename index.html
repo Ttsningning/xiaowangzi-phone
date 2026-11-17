@@ -812,7 +812,7 @@ input,textarea,select{font:inherit;color:var(--text)}
       <div class="card glass">
         <h3>主体 AI 接口</h3>
         <div class="field"><label>渠道</label><select data-s="apiFormat"><option value="openai">OpenAI 兼容</option><option value="vertex">Google Vertex（官方 · 服务端转发）</option></select></div>
-        <p class="hint" id="vertexHelp" hidden>Vertex：下方填写你自己的 HTTPS 转发地址（以 /v1 结尾）和转发访问密钥。服务账号 JSON、项目和区域在 VPS 配置，不在网页上传。模型列表来自服务器允许使用的模型；隐式缓存由 Google 自动判断，命中不保证，不创建收费的显式缓存。语音合成与通用生图请分别填写独立接口，不能借用这个转发地址。</p>
+        <p class="hint" id="vertexHelp" hidden>Vertex：下方填写你自己的 HTTPS 转发地址（以 /v1 结尾）和转发访问密钥。服务账号可在下方导入，身份验证后由你的后台保存。模型列表来自服务器允许使用的模型；隐式缓存由 Google 自动判断，命中不保证，不创建收费的显式缓存。语音合成与通用生图请分别填写独立接口，不能借用这个转发地址。</p>
         <p class="hint" id="vertexUsage" hidden></p>
         <div class="field"><label>API 地址</label><input data-s="baseUrl" placeholder="https://api.deepseek.com/v1"><div class="hint">填 OpenAI 兼容格式的地址，一般以 /v1 结尾。</div></div>
         <div class="field"><label>API 密钥</label><input data-s="apiKey" type="password" placeholder="sk-..."></div>
@@ -2870,6 +2870,7 @@ function underColor(){
 <script src="visitors-city.js"></script>
 <script src="model-picker.js"></script>
 <script src="vertex-api.js"></script>
+<script src="vertex-config.js"></script>
 <script>
 /* ========== 启动 ========== */
 (async()=>{

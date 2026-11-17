@@ -1,1 +1,1 @@
-{"name":"xiaowangzi-vertex-bridge","private":true,"type":"module","scripts":{"start":"node server.mjs","test":"node --test server.test.mjs"},"engines":{"node":">=22"},"dependencies":{"google-auth-library":"^10.0.0"}}
+{"name":"xiaowangzi-vertex-bridge","private":true,"type":"module","scripts":{"start":"node server.mjs","test":"node --test server.test.mjs config-store.test.mjs"},"engines":{"node":">=22"},"dependencies":{"google-auth-library":"^10.0.0"}}

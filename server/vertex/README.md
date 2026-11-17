@@ -1,27 +1,23 @@
-# 小手机官方 Vertex 服务端
+# 小手机官方 Vertex：酒馆式网页配置
 
-这部分部署到你自己的 VPS，不随静态小手机发布。JSON 服务账号只放在服务器；前端没有上传或保存私钥的入口。网站目前只完成代码接入，部署此服务并填入自己的凭据后才能真实调用 Google。
+前端现在支持：导入或粘贴 Service Account JSON → 检查格式 → 验证 Google 身份并保存 → 选地区（含 global）和模型 → 测试消息。私钥只在输入期间存在页面内存，保存后由自己的 VPS 后台保管，不进入小手机数据库、备份、仓库或静态发布目录。
 
-## 准备
+网站发布和 VPS 后台部署是两件事：此目录需要在你的 VPS 部署一次，网页才能真正配置和调用官方 Vertex。仓库中的测试使用模拟 Google，不代表你的真实账号已连通。
 
-- Node.js 22 或更新版本。
-- 已启用 Vertex AI API、已关联结算的 Google Cloud 项目。
-- 对该项目有 Vertex 调用权限的服务账号（通常使用 `roles/aiplatform.user`，再按项目实际策略配置），及其 `service_account` JSON 文件。
-- 一个指向 VPS、带有效 HTTPS 证书的域名。手机访问的是该域名。
-- 从 Google 控制台确认当前项目和区域支持的 Gemini 模型 ID。服务端只允许 `VERTEX_MODELS` 指定的模型；模型列表不是自动发现所有 Google 模型，也不会调用模型推理计费。
+## 首次部署
 
-不要把真实 JSON、环境文件或转发密钥提交仓库。不要把 Google access token 当成永久密钥填到小手机。
+1. 准备 Node.js 22+、一个带 HTTPS 的后台域名，以及专用系统用户 `vertex`（不允许交互登录）。
+2. 将本目录复制到 `/opt/xiaowangzi-vertex`，执行 `npm ci --omit=dev`。
+3. 创建 `/etc/xiaowangzi/vertex.env`，参考 `.env.example`。分别运行两次 `openssl rand -hex 32`，生成两个不同的密钥：
+   - `BRIDGE_TOKEN`：日常聊天/读取配置使用，在小手机的「后台访问密钥」填写。
+   - `VERTEX_ADMIN_TOKEN`：修改服务账号、地区、允许模型使用，只在网页保存配置时填写，页面不持久保存它。
+4. `ALLOWED_ORIGINS` 填小手机来源，默认 `https://xiaowangzi-phone.gtt137233896.chatgpt.site`。环境文件仅管理员与服务用户可读。
+5. 不需要先手动安装账号 JSON；`VERTEX_MODELS` 也可留空，稍后在网页配置。已有账号文件可以通过 `GOOGLE_APPLICATION_CREDENTIALS` 指定，作为迁移来源。
+6. 安装 `vertex.service` 到 `/etc/systemd/system/xiaowangzi-vertex.service`。确认 Node 路径与 `command -v node` 一致，运行 `systemctl daemon-reload`、`systemctl enable --now xiaowangzi-vertex`。
 
-## 安装与配置
+systemd 的 `StateDirectory=xiaowangzi` 创建服务用户可写的 `/var/lib/xiaowangzi`。配置默认保存到 `/var/lib/xiaowangzi/vertex-config.json`（可用 `VERTEX_CONFIG_FILE` 调整），权限 600。使用其他路径时，需同步调整 systemd 的可写目录策略。
 
-1. 将本目录的代码复制到 `/opt/xiaowangzi-vertex`，运行 `npm ci --omit=dev`。
-2. 创建专用系统用户 `vertex`（不允许交互登录）。创建 `/etc/xiaowangzi`，仅管理员及该服务用户可访问。
-3. 通过你自己的服务器文件管理/SSH，把 JSON 放到 `/etc/xiaowangzi/service-account.json`，所有者设为 `vertex`、文件权限 `600`。不要放进站点目录。
-4. 复制 `.env.example` 为 `/etc/xiaowangzi/vertex.env`。填写模型列表；用 `openssl rand -hex 32` 生成转发密钥并填写 `BRIDGE_TOKEN`。环境文件也设置为仅管理员与服务用户可读。
-5. `VERTEX_LOCATION` 默认 `global`，不支持 global 的模型请改成其支持的区域。项目默认读取 JSON 的 project_id，也可设置 `GOOGLE_CLOUD_PROJECT` 覆盖。
-6. 将 `vertex.service` 安装到 `/etc/systemd/system/xiaowangzi-vertex.service`。确认 `ExecStart` 的 Node 路径与你服务器 `command -v node` 一致，再运行 `systemctl daemon-reload` 和 `systemctl enable --now xiaowangzi-vertex`。
-
-服务默认只监听 127.0.0.1:8787；通过现有宝塔/Nginx 的 HTTPS 站点转发以下路径。保留完整 `/v1/` 路径：
+后台默认只监听 `127.0.0.1:8787`。在宝塔/Nginx 的 HTTPS 站点配置：
 
 ```nginx
 location /v1/ {
@@ -33,35 +29,46 @@ location /v1/ {
 }
 ```
 
-所有生成和模型列表都验证转发密钥；浏览器来源仅允许 `ALLOWED_ORIGINS` 中列出的精确来源。CORS 不是认证替代品。该转发服务为你自己的小手机使用，不提供公开免密代理。可额外通过 Nginx 限流。
+升级旧版本后台时，必须添加独立的 `VERTEX_ADMIN_TOKEN`，复制新增的 `config-store.mjs`，更新 systemd 服务并重启。网页遇到旧后台会提示升级，不会假报保存成功。
 
-## 在小手机使用
+## 在小手机配置
 
-- 设置 → 主体 AI 接口 → 渠道：`Google Vertex（官方 · 服务端转发）`。
-- API 地址：你的 HTTPS 服务地址，以 `/v1` 结尾。
-- API 密钥：你自己的 `BRIDGE_TOKEN`，不是 JSON 私钥。
-- 拉取模型列表后选模型；测试连接会实际调用 Google，可能收费。
-- 角色专属 API 也可选 Vertex；角色专属三项完整时优先使用其配置，否则跟随主体接口。
-- 识图未填写独立地址时跟随主体 Vertex（需要所选模型支持图片）；生图与语音仍保留现有独立接口，切换 Vertex 后应单独填写兼容接口。此服务仅提供 Gemini 文本/内嵌图片消息生成与模型列表，不伪装成图片生成、语音合成或通用 OpenAI 服务。
+1. 设置 → 主体 AI 接口 → Google Vertex。
+2. 首次填写后台地址 `https://你的域名/v1` 和 `BRIDGE_TOKEN`；这是你自己的后台，不是 Google 官方地址。
+3. 点击「连接 · 读取已保存配置」。没有账号时会明确显示未配置。
+4. 导入 JSON 或粘贴全文。「检查 JSON 格式」只检查格式，既不发送凭据也不调用 Google。
+5. 选择地区，支持 `global`、常见区域或手填。下方模型框可手填精确 Gemini 模型 ID。
+6. 输入 `VERTEX_ADMIN_TOKEN`，点「验证身份并保存」。凭据只发送到当前填写的 HTTPS 后台。后台通过 Google 官方认证库换取令牌成功后才原子保存；验证或写盘失败时保留旧配置。此步骤不调用模型生成，不能证明项目结算、权限、模型和地区都可用。
+7. 保存成功后，页面清空 JSON 与管理密钥，只显示项目、账号和地区。用「拉取模型列表」打开后台允许的模型列表；该列表不是 Google 全量发现，也不保证每个模型可调用。
+8. 点击「发送测试消息」实际检查模型、地区和权限，会调用 Google 并可能收费。
 
-前端支持真实流式响应。服务账号通过 Google 官方认证库换取短期令牌，由库自动复用与刷新；错误响应不回传凭据或 Google 原始错误体。
+已有账号时，读取配置后可以只修改地区/模型，再用管理密钥保存，不必反复上传 JSON。后台保存的地区/账号对使用同一后台的角色共同生效；角色可单独配置后台地址、访问密钥和模型。不同账号可使用不同后台实例。
 
-## 缓存与用量
+服务账号应属于已启用 Vertex AI API、关联结算且具备必要 Vertex 调用权限的项目，通常使用 `roles/aiplatform.user`，按项目实际策略配置。JSON 本身可换令牌不等于项目有模型调用权限。请从 Google 控制台确认模型 ID 与地区支持情况。
 
-本版本利用 Google 隐式上下文缓存，不创建、续费或存储显式缓存资源。聊天稳定规则、人设、记忆和既有对话保留在前，变化的时间、订单等当前状态放在后面。模型是否命中由 Google 的模型门槛、前缀一致程度和服务策略决定；不要为凑门槛填充无用文字。
+## 凭据和连接行为
 
-设置和角色页显示 Google 实际返回的输入、缓存输入、未缓存输入、输出和思考 token。输入总数包含缓存数，不重复相加。这里没有硬编码美元估价，也不把“零命中”显示成已节省费用。模型输出和思考仍可收费，Google Cloud 账单为费用依据。
+- 私钥无读取/导出接口，GET 配置只返回项目、账号、地区和允许模型。
+- 日常访问密钥不能修改账号，配置写入还需要独立管理密钥。
+- 上传 JSON 仅接受 `service_account`、有效项目/账号和至少 2048 位 RSA 私钥；丢弃客户端提供的 OAuth URL 等额外字段，只用固定 Google 认证流程。
+- 配置落盘前验证 Google 令牌，成功后原子替换，再切换运行中的账号。进行中的请求保留原账号/地区，不会中途串号。
+- Google 短期令牌由官方认证库复用与刷新，不返还给网页。服务不会记录聊天或凭据到日志，错误响应不回传 Google 原始错误体。
+- 单请求最大 2MB，配置最大 64KB，每实例最多 4 个进行中的生成，超时 120 秒；输出上限 32768 tokens。不自动重试付费生成。
 
-新设定、记忆整理、不同角色/模型和轮转历史都可能降低命中率。长时间闲置不会由本服务持续续期产生显式缓存存储费。缓存不会增加角色记忆。
+## 缓存和其他渠道
 
-## 接口与验证
+使用 Google 隐式缓存，不创建或续期收费的显式缓存资源。稳定的人设、常驻世界书和较早对话在前，当前时间、订单等动态内容在后。命中由 Google 决定，未承诺固定节省比例。设置和角色页显示真实返回的输入（含缓存）、缓存输入、未缓存输入、输出与思考 token，不重复计数，不硬编码美元估价。
 
-- `GET /v1/models`：返回服务器配置的允许模型。
-- `POST /v1/generate`：只转发到固定 Google Vertex 域名、固定项目和区域；支持 `stream: true`。
-- 不提供服务账号上传、任意 URL 转发、工具调用或显式缓存创建接口。
-- 单请求最大 2MB，单次生成输出上限 32768 tokens，每实例最多 4 个进行中的生成请求，超时 120 秒。中断会取消上游读取；Google 已处理的部分仍可能收费。不自动重试付费生成。
+识图无独立地址时跟随主体 Vertex，要求模型支持图片。生图和语音合成继续配置各自独立渠道，此服务不提供通用 `/images/generations`、`/audio/speech` 或任意代理。
 
-运行 `npm test` 使用模拟上游，验证认证、来源、模型限制、消息、缓存元数据及 SSE；不会调用 Google 或消耗余额。仓库根目录另有浏览器逻辑回归检查。
+## 接口与测试
+
+- `GET /v1/config`：只读配置摘要，需日常访问密钥。
+- `POST /v1/config`：验证并保存 JSON/地区/模型，额外需要 `X-Vertex-Admin-Token`。
+- `GET /v1/models`：后台允许模型。
+- `POST /v1/generate`：只调用固定 Google Vertex 项目与模型，支持原生 SSE。
+
+运行 `npm test` 检查认证、账号保存、文件权限、失败保留、重启恢复、配置隔离、SSE 与 Google 请求转换，使用模拟上游，不消耗 Google 余额。根目录 `npm test` 另有网页交互与旧功能回归。
 
 参考：
 - https://cloud.google.com/vertex-ai/generative-ai/docs/start/cloud-environment
