@@ -1671,7 +1671,8 @@ const STACK=[];
 document.addEventListener('click',e=>{const o=e.target.closest('[data-open]');if(o&&!editing())openApp(o.dataset.open);if(e.target.closest('[data-back]'))popApp()});
 const RENDER={visitors:()=>visitorRender(),starLibrary:()=>starRender(),world:()=>{wb.book=wb.entry=null;wbRender()},preset:()=>{ps.edit=null;psRender()},games:renderGames,chat:renderChat,story:renderStory,memory:renderMemory,char:renderChar,theme:renderTheme,settings:renderSettings,msgs:()=>renderMsgs(),diary:renderDiary,peek:renderPeek,shop:renderShop,food:renderFood};
 function openApp(id){
-  if(id==='story'&&typeof visitorIsThread==='function'&&visitorIsThread(curT()))id='visitors';
+  // The home/Dock entry always opens the real-world app. Contact actions route explicitly.
+  if(id==='story'){const L=storyThreads(),T=L.find(t=>t===curT())||L.find(t=>t.id===S.state.storyTid)||L[0];if(T){S.state.cur=T.id;S.state.storyTid=T.id;save('state')}}
   if(id==='chat'&&!STACK.length&&!openApp._direct)id='msgs';openApp._direct=false;
   const el=$('#app-'+id);if(!el)return;
   const i=STACK.indexOf(id);if(i>=0)STACK.splice(i+1);else STACK.push(id);
@@ -1994,7 +1995,7 @@ $('#msgsBody').addEventListener('click',async e=>{
     const i=await actionSheet([{label:'发消息'},{label:'见面'},{label:'偷看TA的日记'},{label:'编辑资料'},{label:'删除这个角色',danger:true},{label:'查TA的手机'}],c.name);
     if(i===5)openPeek(c.id);
     if(i===0)openThread(threadOf(c.id).id);
-    if(i===1){S.state.cur=threadOf(c.id).id;save('state');openApp('story')}
+    if(i===1){const T=threadOf(c.id);if(typeof visitorMeet==='function')await visitorMeet(T.id);else{S.state.cur=T.id;save('state');openApp('story')}}
     if(i===2)openDiary(c.id);
     if(i===3){charEdit=c.id;openApp('char')}
     if(i===4)deleteChar(c.id);
@@ -2087,7 +2088,7 @@ $('#chatMore').onclick=async()=>{
   opts.push({label:'🧹 清空这里的聊天和剧情',k:'clear',danger:true});
   const i=await actionSheet(opts,tName(T));if(i<0)return;const k=opts[i].k;
   if(k==='reset'||k==='restore')return requestCharacterReset(T.members[0],k==='restore');
-  if(k==='story')openApp('story');if(k==='mem'){if(typeof ksOpenMemory==='function')ksOpenMemory(T.members[0]);else openApp('memory')};if(k==='diary')openDiary(T.members[0]);if(k==='peek')openPeek(T.members[0]);
+  if(k==='story'){if(typeof visitorMeet==='function')await visitorMeet(T.id);else openApp('story')};if(k==='mem'){if(typeof ksOpenMemory==='function')ksOpenMemory(T.members[0]);else openApp('memory')};if(k==='diary')openDiary(T.members[0]);if(k==='peek')openPeek(T.members[0]);
   if(k==='grp'){const r=await formSheet('群设置',[{k:'name',t:'text',l:'群名'},{k:'members',t:'multi',l:'群成员',opts:S.chars.map(c=>[c.id,c.name])}],{name:T.name,members:[...T.members]});
     if(r&&r.members?.length){const add=r.members.filter(x=>!T.members.includes(x));T.name=(r.name||'').trim();T.members=r.members;saveThreads();if(add.length)pushMsg(T,'online','event',`${S.user.name}邀请${add.map(x=>charById(x)?.name).join('、')}加入了群聊`);renderChat()}}
   if(k==='clear'){if(await actionSheet([{label:'确定清空',danger:true}])!==0)return;T.msgs=[];T.mem.upTo=0;saveMsgs(T);saveMem(T);renderChat()}
@@ -2185,8 +2186,14 @@ async function openGift(i){
 
 /* ========== 见面 App ========== */
 function fmtStory(t){return esc(t).split(/\n+/).filter(Boolean).map(p=>`<p>${p.replace(/(“[^”]*”|「[^」]*」|&quot;[^&]*?&quot;)/g,'<span class="dlg">$1</span>')}</p>`).join('')}
+function storyThreads(){return S.threads.filter(T=>T.members?.length&&T.members.every(id=>charById(id))&&!(typeof visitorIsThread==='function'&&visitorIsThread(T)))}
+function storyReady(){return storyThreads().includes(curT())}
 function renderStory(){
-  const T=curT();$('#storySub').textContent=`和 ${tName(T)} · 线下剧情`;
+  const T=curT(),ready=storyReady();
+  for(const id of ['storyInput','storySend','storyImg','toChat'])$('#'+id).disabled=!ready;
+  if(!ready){$('#storySub').textContent='现实世界 · 选择同世界好友';$('#storyList').innerHTML='<div class="evt" style="margin-top:40px">这里是现实世界的线下见面<br>暂无可见面的同世界好友；万界杂货铺好友请在「万界来客」赴约。</div>';return}
+  if(S.state.storyTid!==T.id){S.state.storyTid=T.id;save('state')}
+  $('#storySub').textContent=`和 ${tName(T)} · 线下剧情`;
   let h='',on=0;
   const flush=()=>{if(on){h+=`<button class="chip" data-open="chat">📱 手机上聊了 ${on} 条消息</button>`;on=0}};
   T.msgs.forEach((m,i)=>{
@@ -2200,13 +2207,14 @@ function renderStory(){
   const b=$('#storyList');b.innerHTML=h;b.scrollTop=b.scrollHeight;
 }
 $('#storySend').onclick=()=>{
+  if(!storyReady())return toast('请选择现实世界的好友；万界好友请前往万界来客');
   const T=curT(),t=$('#storyInput').value.trim();
   if(t){$('#storyInput').value='';pushMsg(T,'offline','user',t);renderStory();generate(T,'offline')}
   else generate(T,'offline','继续推进剧情');
 };
-$('#storyWho').onclick=async()=>{const L=S.threads;const i=await actionSheet(L.map(T=>({label:(T===curT()?'✓ ':'')+tName(T)})),'和谁见面');if(i>=0){S.state.cur=L[i].id;save('state');renderStory()}};
-$('#storyList').addEventListener('click',e=>{const edit=e.target.closest('[data-photo-edit]');if(edit){const T=curT();editPhotoInfo(T,T.msgs[+edit.dataset.photoEdit]);return}const re=e.target.closest('[data-photo-regen]');if(re){const T=curT();regeneratePhoto(T,T.msgs[+re.dataset.photoRegen]);return}const pic=e.target.closest('[data-pic]');if(pic){const im=pic.querySelector('img');if(im)return showViewer(im.src)}const el=e.target.closest('[data-i]');if(el)msgMenu(+el.dataset.i)});
-$('#storyImg').onclick=()=>illustrate(curT());
+$('#storyWho').onclick=async()=>{const L=storyThreads();if(!L.length)return toast('暂无同世界好友；万界好友请在万界来客赴约');const i=await actionSheet(L.map(T=>({label:(T===curT()?'✓ ':'')+tName(T)})),'现实世界 · 和谁见面');if(i>=0&&storyThreads().includes(L[i])){S.state.cur=L[i].id;S.state.storyTid=L[i].id;save('state');renderStory()}};
+$('#storyList').addEventListener('click',e=>{if(!storyReady())return;const edit=e.target.closest('[data-photo-edit]');if(edit){const T=curT();editPhotoInfo(T,T.msgs[+edit.dataset.photoEdit]);return}const re=e.target.closest('[data-photo-regen]');if(re){const T=curT();regeneratePhoto(T,T.msgs[+re.dataset.photoRegen]);return}const pic=e.target.closest('[data-pic]');if(pic){const im=pic.querySelector('img');if(im)return showViewer(im.src)}const el=e.target.closest('[data-i]');if(el)msgMenu(+el.dataset.i)});
+$('#storyImg').onclick=()=>{if(storyReady())illustrate(curT())};
 
 /* ========== 记忆 App ========== */
 function renderMemory(){const T=curT();$('#memTitle').textContent=`记忆 · ${tName(T)}`;$('#memText').value=T.mem.summary;$('#memStat').textContent=`共 ${T.msgs.length} 条记录，其中 ${T.msgs.length-T.mem.upTo} 条还没整理进长期记忆。`}

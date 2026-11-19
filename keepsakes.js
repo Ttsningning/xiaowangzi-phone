@@ -11,7 +11,7 @@ const KS_ASSET='themes/prince/keepsakes/';
 const KS_RECTS={album:[0,10,385,385],book:[390,8,370,390],cover:[776,20,365,365],fox:[1150,10,385,385],camera:[800,880,145,130],envelope:[1143,404,240,175],divider:[614,735,902,90],bookmark:[326,405,130,315]};
 const ksBusy=new Set(),ksCommentDrafts=new Map();let ksMemoryChar=null,ksMemoryFilter='all',ksAlbumChar='all',ksPhotoId=null;
 const KS_KINDS={about:'关于我们',event:'共同经历',gift:'礼物与信物',promise:'重要约定'};
-function ksSprite(kind,size=80){const transparent={book:['themes/prince/deco/i-book.webp',165,156],album:['themes/prince/ui/photo.webp',187,220]};if(transparent[kind]){const [src,w,h]=transparent[kind];return `<span class="ks-sprite ks-transparent ks-${kind}" style="width:${size}px;aspect-ratio:${w}/${h}" aria-hidden="true"><img src="${src}" alt=""></span>`}const [x,y,w,h]=KS_RECTS[kind]||KS_RECTS.book;return `<span class="ks-sprite ks-${kind}" style="width:${size}px;aspect-ratio:${w}/${h}" aria-hidden="true"><img src="${KS_ASSET}materials.jpg" alt="" style="width:${1536/w*100}%;left:${-x/w*100}%;top:${-y/h*100}%"></span>`}
+function ksSprite(kind,size=80){const transparent={book:['themes/prince/deco/i-book.webp',165,156],album:['themes/prince/ui/photo.webp',187,220],camera:['themes/prince/ui/photo.webp',187,220]};if(transparent[kind]){const [src,w,h]=transparent[kind];return `<span class="ks-sprite ks-transparent ks-${kind}" style="width:${size}px;aspect-ratio:${w}/${h}" aria-hidden="true"><img src="${src}" alt=""></span>`}const [x,y,w,h]=KS_RECTS[kind]||KS_RECTS.book;return `<span class="ks-sprite ks-${kind}" style="width:${size}px;aspect-ratio:${w}/${h}" aria-hidden="true"><img src="${KS_ASSET}materials.jpg" alt="" style="width:${1536/w*100}%;left:${-x/w*100}%;top:${-y/h*100}%"></span>`}
 function ksBtn(action,label,id='',extra=''){return `<button class="btn" data-ks="${action}" data-id="${esc(id)}" ${extra}>${esc(label)}</button>`}
 function ksBook(cid){return S.keepsakes.books[cid]||(S.keepsakes.books[cid]={cards:[]})}
 function ksDate(ts){return new Date(ts).toLocaleDateString()}
@@ -116,8 +116,8 @@ async function ksPostComment(p){
   if(owners.length>1){const i=await actionSheet(owners.map(c=>({label:c.name})),'这句点评想让谁回复？');if(i==null||i<0||!owners[i])return;who=owners[i]}
   if(S.album!==state||!state.photos.includes(p))return;const c={id:uid(),role:'user',text,at:Date.now(),replyWho:who?.id||'',replyStatus:who?'pending':'none'};p.comments.push(c);ksCommentDrafts.delete(p.id);if(input)input.value='';await save('album');ksRenderAlbum();if(who)await ksCommentReply(p,c);
 }
-function ksPeekGlyph(kind){const paths={chats:'i-chat.png',memo:'deco/i-book.webp',album:'ui/photo.webp',cart:'i-shop.png',wallet:'i-wallet.webp',phone:'i-peek.png',busy:'ui/spark.webp'};return paths[kind]?`<img class="ks-peek-icon" src="themes/prince/${paths[kind]}" alt="">`:'🔍'}
-function ksApplyPeekIcons(){for(const b of $$('#peekTabs [data-pt]')){const i=b.querySelector('i');if(i&&b.dataset.pt!=='search')i.innerHTML=b.dataset.pt==='album'?ksSprite('camera',28):ksPeekGlyph(b.dataset.pt)} }
+function ksPeekGlyph(kind){const paths={chats:'i-chat.png',memo:'deco/i-book.webp',search:'i-peek.png',album:'ui/photo.webp',cart:'i-shop.png',wallet:'i-wallet.webp',phone:'i-peek.png',busy:'ui/spark.webp'};return paths[kind]?`<img class="ks-peek-icon" src="themes/prince/${paths[kind]}" alt="">`:'🔍'}
+function ksApplyPeekIcons(){for(const b of $$('#peekTabs [data-pt]')){const i=b.querySelector('i');if(i)i.innerHTML=b.dataset.pt==='album'?ksSprite('camera',28):ksPeekGlyph(b.dataset.pt)} }
 
 document.addEventListener('change',e=>{if(e.target.id==='ksMemorySelect'){ksMemoryChar=e.target.value;ksMemoryFilter='all';ksRenderMemory()}});
 document.addEventListener('click',async e=>{

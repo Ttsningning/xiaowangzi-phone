@@ -16,11 +16,18 @@ const w=dom.window,ev=x=>w.eval(x),check=(label,x)=>{assert.ok(ev(x),label);cons
  check('online invitation renders a button without moving anybody or spending',`!!document.querySelector('[data-visitor="meet"]')&&!S.visitors.inside&&S.wallet.balance===funds`);
  ev(`pushMsg(CT,'online','user','今天不方便见面，取消吧。');renderChat()`);
  check('latest declined meeting removes stale invitation',`!document.querySelector('[data-visitor="meet"]')`);
- ev(`S.state.cur=CT.id;openApp('story')`);
- check('all ordinary story entrypoints route cross-world friends to the planet lobby',`STACK.at(-1)==='visitors'&&!S.visitors.inside`);
+ ev(`S.state.storyTid=LT.id;S.state.cur=CT.id;renderHome();document.querySelector('#dock [data-app=story]').click()`);
+ check('Dock always opens the real-world app even after a market chat',`STACK.at(-1)==='story'&&curT()===LT&&!S.visitors.inside`);
+ check('real-world picker excludes cross-world and mixed group threads',`storyThreads().includes(LT)&&!storyThreads().includes(CT)`);
+ ev(`var originalSheet=actionSheet;var realChoices;actionSheet=async opts=>{realChoices=opts;return -1}`);await ev(`document.querySelector('#storyWho').onclick()`);
+ check('visible real-world picker contains no market friend',`realChoices.length===storyThreads().length&&!realChoices.some(x=>x.label.includes(cross.name))`);
+ ev(`actionSheet=originalSheet;S.state.cur=CT.id;renderChat()`);
  ev(`var calls=0,captured;callAPI=async(m)=>{calls++;captured=m;return '星港的霓虹映在玻璃上。'};S.settings.baseUrl='https://example.test/v1';S.settings.apiKey='mock';S.settings.model='mock';`);
  await ev(`generate(CT,'offline')`);assert.equal(ev('calls'),0);
- await ev(`visitorMeet(CT.id)`);
+ // The invitation carries its own thread, even if the current chat changes before a click.
+ ev(`pushMsg(CT,'online','assistant','明天见面吧');S.state.cur=CT.id;renderChat();var invite=document.querySelector('[data-visitor=meet]');S.state.cur=LT.id;invite.click()`);
+ for(let n=0;n<100&&!ev('S.visitors.inside');n++)await new Promise(r=>setTimeout(r,10));
+ await new Promise(r=>setTimeout(r,30));
  check('only the clicked meeting button establishes presence and selected companion',`S.visitors.inside&&S.visitors.companion===cross.id&&STACK.at(-1)==='visitors'&&calls===0`);
  check('restricted incubation facility has no travel action',`!document.querySelector('[data-place="incubator"]')&&document.querySelector('.visitor-restricted').textContent.includes('不得靠近')`);
  ev(`S.visitors.drafts[cross.id]='聊聊我们在线上买的暖玉。'`);await ev('visitorGenerate()');
@@ -36,7 +43,18 @@ const w=dom.window,ev=x=>w.eval(x),check=(label,x)=>{assert.ok(ev(x),label);cons
  check('returning home ends co-presence but preserves the journey',`!S.visitors.inside&&!S.visitors.companion&&visitorJournal(cross.id).some(m=>m.role==='assistant')`);
  await ev('visitorSave()');const saved=await ev('DB.get("visitors")');assert.ok(saved.journals['cross-test'].length);
  ev(`var all=buildBackup();`);check('complete backup includes planet presence journals and rules',`all.visitors.journals['cross-test'].length>0&&all.world.books.some(b=>/^builtin:visitors-v[12]$/.test(b.src))`);
- await ev('visitorMeet(LT.id)');check('same-world friends still use the existing story app',`STACK.at(-1)==='story'&&!S.visitors.inside`);
+ ev(`pushMsg(LT,'online','assistant','一起见面吧');S.state.cur=LT.id;renderChat();var localInvite=document.querySelector('[data-visitor=meet]');S.state.cur=CT.id;localInvite.click()`);
+ for(let n=0;n<100&&ev('STACK.at(-1)')!=='story';n++)await new Promise(r=>setTimeout(r,10));
+ check('real-world invitation follows its own friend rather than the last chat',`STACK.at(-1)==='story'&&curT()===LT&&!S.visitors.inside`);
+ ev(`S.state.cur=CT.id;actionSheet=async()=>0`);await ev(`document.querySelector('#chatMore').onclick()`);
+ check('chat menu routes market friends through the same meeting action',`STACK.at(-1)==='visitors'&&S.visitors.companion===cross.id`);
+ ev(`S.visitors.inside=false;S.visitors.companion='';actionSheet=async()=>1;msgTab='contacts';renderMsgs();document.querySelector('[data-ch="'+cross.id+'"]').click()`);
+ for(let n=0;n<100&&!ev('S.visitors.inside');n++)await new Promise(r=>setTimeout(r,10));
+ check('contact menu also routes the selected market friend to the planet',`S.visitors.inside&&S.visitors.companion===cross.id`);
+ ev(`actionSheet=originalSheet;S.visitors.inside=false;S.visitors.companion='';var allThreads=S.threads;S.threads=[CT];S.state.cur=CT.id;openApp('story')`);
+ check('without real-world friends the app stays real-world and disables writing',`STACK.at(-1)==='story'&&document.querySelector('#storySend').disabled&&!document.querySelector('#storyList').textContent.includes('星港的霓虹')&&!S.visitors.inside`);
+ ev(`S.threads=allThreads;S.state.cur=LT.id;openApp('story');S.state.cur=CT.id;openApp('story')`);
+ check('returning to the real-world app restores an eligible friend',`curT()===LT&&!document.querySelector('#storySend').disabled`);
 
  // Live documents, explicit arrival, mother authorization and durable city life.
  ev(`S.user.gender='female';S.user.name='宁宁';S.user.avatar='data:image/png;base64,DO_NOT_SEND_AVATAR';cross.gender='male';cross.avatar='data:image/png;base64,PRIVATE_IMAGE';var passNumber=visitorPassport(cross.id).number;cross.name='陆渊改名';`);
